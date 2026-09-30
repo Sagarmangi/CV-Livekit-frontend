@@ -25,7 +25,7 @@ export type TestSessionResult = TestSession | { error: string };
 /** Must match the worker's LIVEKIT_AGENT_NAME (see agent-worker/settings.py --
  * it defaults to this same string). A mismatch means dispatches are created
  * successfully and then silently never claimed. */
-const WORKER_AGENT_NAME = "kodexo-inbound-agent";
+const WORKER_AGENT_NAME = "codeora-inbound-agent";
 
 /**
  * Starts a browser-testable session with this agent, entirely local to
@@ -49,7 +49,7 @@ export async function createTestSession(agentId: string): Promise<TestSessionRes
     // in the dashboard's journal, which is the only place to see that the
     // dashboard and the worker disagree about which LiveKit they're using.
     console.info(
-      `[kodexo-test] dispatch created room=${roomName} agent=${WORKER_AGENT_NAME} ` +
+      `[codeora-test] dispatch created room=${roomName} agent=${WORKER_AGENT_NAME} ` +
         `livekit=${url} dispatch=${created.id ?? "?"}`,
     );
 
@@ -67,7 +67,7 @@ export async function createTestSession(agentId: string): Promise<TestSessionRes
       dispatchId: created.id ?? null,
     };
   } catch (error) {
-    console.error("[kodexo-test] dispatch failed", error);
+    console.error("[codeora-test] dispatch failed", error);
     return { error: `Could not start a test session: ${describeFailure(error)}` };
   }
 }

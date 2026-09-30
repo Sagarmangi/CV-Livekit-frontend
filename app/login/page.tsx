@@ -50,7 +50,7 @@ export default async function LoginPage({
                 type="email"
                 autoComplete="email"
                 required
-                placeholder="you@kodexolabs.com"
+                placeholder="you@company.com"
               />
             </Field>
             <Field label="Password" htmlFor="login-password">
@@ -66,7 +66,7 @@ export default async function LoginPage({
         </div>
 
         <p className="mt-6 text-center text-xs text-faint">
-          Access is limited to authorized Kodexo Labs accounts.
+          Access is limited to authorized Codeora Vision accounts.
         </p>
       </div>
     </div>

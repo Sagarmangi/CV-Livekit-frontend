@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Codeora Vision — Voice Agent Dashboard
 
-## Getting Started
+The admin UI for Codeora Vision's LiveKit voice-agent platform. Use it to
+configure voice agents (prompt, voice, pronunciation dictionary, tools), connect
+and manage Twilio phone numbers on the shared SIP trunk, test an agent live in
+the browser, and review call logs.
 
-First, run the development server:
+It is a Next.js 16 (App Router) app backed by Supabase. The voice worker that
+actually answers calls lives in the backend repo:
+[Sagarmangi/CV-Livekit-backend](https://github.com/Sagarmangi/CV-Livekit-backend).
+
+## Setup
+
+Requires Node.js 20+.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Fill in `.env.local`. Every value is server-only, and each is documented in
+[.env.example](.env.example):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | What it is |
+| --- | --- |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` | Supabase project URL and keys (Settings → API) |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio console credentials |
+| `TWILIO_SIP_TRUNK_SID` | The one shared Elastic SIP Trunk (`TK…`) |
+| `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | The LiveKit server, same key pair as the backend |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+There is no public sign-up. To give someone access, create them in Supabase
+Auth and add them to the `allowed_users` table.
 
-## Learn More
+## Development
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev     # http://localhost:3000
+npm run build   # production build
+npm run start   # serve the production build
+npm run lint
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The in-browser agent test dispatches the `codeora-inbound-agent` worker and
+listens on the `codeora.diagnostic` text-stream topic. Both names must match
+the backend.

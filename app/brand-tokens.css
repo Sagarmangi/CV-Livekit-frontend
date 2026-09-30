@@ -1,7 +1,8 @@
-/* Kodexo Labs Visual Identity v1.0 — Design Tokens
+/* Codeora Vision Visual Identity — Design Tokens
  * Source of truth: sot/visual-identity.tokens.json
- * Live preview: https://kodexo-brand-identity.vercel.app
- * DO NOT modify locally. Pull from the SOT and bump the version below if updated.
+ * The palette and type values below are still carried over from the previous
+ * identity; replace them from the Codeora Vision SOT when it lands, and bump
+ * the version here when you do. DO NOT modify locally otherwise.
  *
  * Held verbatim from the SOT, custom properties and keyframes only. Everything
  * that *applies* these tokens -- the element rules, the Tailwind bridge, the
@@ -12,9 +13,9 @@
 
 :root {
   /* ── Brand ───────────────────────────────────────── */
-  --brand-red: #F54545;
-  --brand-red-deep: #B22424;
-  --brand-red-tint: #FFE1E1;
+  --brand-primary: #F54545;
+  --brand-primary-deep: #B22424;
+  --brand-primary-tint: #FFE1E1;
   --brand-black: #0A0A0F;
   --brand-white: #FFFFFF;
   --brand-gradient-a: linear-gradient(135deg, #F54545 0%, #FF8A8A 100%);
@@ -97,7 +98,7 @@
   from { clip-path: inset(0 100% 0 0); }
   to   { clip-path: inset(0 0 0 0); }
 }
-@keyframes red-pulse {
+@keyframes accent-pulse {
   0%, 100% { transform: scale(1);    opacity: 1;    }
   50%      { transform: scale(1.04); opacity: 0.92; }
 }

@@ -40,13 +40,13 @@ type Session = {
 const startedAt = Date.now();
 function testLog(event: string, detail?: unknown): void {
   const at = ((Date.now() - startedAt) / 1000).toFixed(1);
-  if (detail === undefined) console.info(`[kodexo-test +${at}s] ${event}`);
-  else console.info(`[kodexo-test +${at}s] ${event}`, detail);
+  if (detail === undefined) console.info(`[codeora-test +${at}s] ${event}`);
+  else console.info(`[codeora-test +${at}s] ${event}`, detail);
 }
 
 /** Text-stream topic the worker reports failures on -- must match
  * DIAGNOSTIC_TOPIC in agent-worker/src/worker/entrypoint.py. */
-const DIAGNOSTIC_TOPIC = "kodexo.diagnostic";
+const DIAGNOSTIC_TOPIC = "codeora.diagnostic";
 
 // LiveKit's built-in chat topic. AgentSession already treats anything arriving
 // here as a user turn, so typing reaches the model by exactly the same path

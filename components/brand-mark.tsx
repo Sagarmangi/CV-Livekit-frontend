@@ -1,18 +1,17 @@
 import Image from "next/image";
 
 /**
- * The Kodexo Labs mark. The asset is already brand red on transparency, so it
- * sits directly on whatever surface it's placed on -- no coloured tile behind
- * it, which would double up the red and fight the identity's "one red accent"
- * rule.
+ * The Codeora Vision mark. The asset is full-colour artwork on transparency, so
+ * it sits directly on whatever surface it's placed on -- no coloured tile
+ * behind it.
  *
- * The same file is `app/icon.png`, which is where the browser tab icon comes
- * from via Next's file convention.
+ * `app/icon.png` and `app/favicon.ico` are generated from the same file, which
+ * is where the browser tab icon comes from via Next's file convention.
  */
 export function BrandMark({ size = 32 }: { size?: number }) {
   return (
     <Image
-      src="/kodexo-mark.png"
+      src="/codeora-vision-mark.png"
       alt=""
       width={size}
       height={size}
@@ -26,18 +25,19 @@ export function BrandMark({ size = 32 }: { size?: number }) {
 
 // Both logo files are the same artwork; this is its aspect ratio, so a caller
 // only ever picks a height and can't distort it.
-const WORDMARK_RATIO = 529 / 180;
+const WORDMARK_RATIO = 1515 / 390;
 
 /**
- * The full Kodexo Labs logo, artwork rather than set type -- so the wordmark is
- * always the real one instead of an approximation in whatever face is loaded.
+ * The full Codeora Vision logo, artwork rather than set type -- so the wordmark
+ * is always the real one instead of an approximation in whatever face is loaded.
  *
- * Two files, swapped by CSS rather than by reading the theme in JS: the artwork
- * is flat black in one and flat white in the other, so neither survives both
- * backgrounds. `dark:` here resolves through the `data-theme="dark"` custom
- * variant in globals.css, which means the right one is correct in the very first
- * paint -- a JS-chosen src would flash the wrong colour on load, and it would be
- * the *invisible* one against its own background.
+ * Two files, swapped by CSS rather than by reading the theme in JS: the lettering
+ * is dark in one and white in the other, so neither survives both backgrounds.
+ * `-on-light` is the dark-lettered file for the light theme, `-on-dark` the
+ * white-lettered one. `dark:` here resolves through the `data-theme="dark"`
+ * custom variant in globals.css, which means the right one is correct in the
+ * very first paint -- a JS-chosen src would flash the wrong colour on load, and
+ * it would be the *invisible* one against its own background.
  *
  * Only the displayed image is in the accessibility tree; the other is
  * `display: none`, so both can carry the same alt text without it being read
@@ -53,14 +53,14 @@ export function BrandWordmark({ height = 36 }: { height?: number }) {
     <>
       <Image
         {...size}
-        alt="Kodexo Labs"
-        src="/kodexo-labs-logo-light.png"
+        alt="Codeora Vision"
+        src="/codeora-vision-logo-on-light.png"
         className="shrink-0 dark:hidden"
       />
       <Image
         {...size}
-        alt="Kodexo Labs"
-        src="/kodexo-labs-logo-dark.png"
+        alt="Codeora Vision"
+        src="/codeora-vision-logo-on-dark.png"
         className="hidden shrink-0 dark:block"
       />
     </>

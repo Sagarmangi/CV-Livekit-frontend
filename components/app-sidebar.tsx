@@ -148,7 +148,7 @@ export function AppSidebar({
         <div className="flex h-16 shrink-0 items-center border-b border-divider px-3">
           <Link
             href="/agents"
-            title="Kodexo Labs — voice agent platform"
+            title="Codeora Vision — voice agent platform"
             onClick={() => setDrawerOpen(false)}
             className="flex min-w-0 flex-1 items-center"
           >

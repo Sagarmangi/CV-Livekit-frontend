@@ -72,9 +72,9 @@ export type QualificationCriterion = {
 
 /** One entry in `agents.pronunciation_dictionary` (FSD 4.1 / FR-07). */
 export type PronunciationEntry = {
-  /** The written form, e.g. "Kodexo Labs". */
+  /** The written form, e.g. "Codeora Vision". */
   term: string;
-  /** How TTS should say it, e.g. "Ko-DEX-oh Labs". */
+  /** How TTS should say it, e.g. "Code-OR-uh Vision". */
   say_as: string;
 };
 

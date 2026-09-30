@@ -2,7 +2,7 @@
 @import "./brand-tokens.css";
 
 /*
- * Everything that applies the Kodexo Labs visual identity. The raw tokens are
+ * Everything that applies the Codeora Vision visual identity. The raw tokens are
  * held verbatim in brand-tokens.css (see the note at the top of that file);
  * this file is the only place they get wired into anything, which keeps a
  * future SOT pull to a single-file overwrite.
@@ -71,8 +71,8 @@
   --warning-border: color-mix(in oklab, #FCD34D 30%, transparent);
   --warning-text: #FCD34D;
 
-  --error-bg: color-mix(in oklab, var(--brand-red) 14%, transparent);
-  --error-border: color-mix(in oklab, var(--brand-red) 34%, transparent);
+  --error-bg: color-mix(in oklab, var(--brand-primary) 14%, transparent);
+  --error-border: color-mix(in oklab, var(--brand-primary) 34%, transparent);
   --error-text: #FCA5A5;
 
   --info-bg: color-mix(in oklab, #93C5FD 12%, transparent);
@@ -80,7 +80,7 @@
   --info-text: #93C5FD;
 
   /* Reads as a tinted brand wash on a dark canvas rather than near-white. */
-  --brand-red-tint: color-mix(in oklab, var(--brand-red) 18%, transparent);
+  --brand-primary-tint: color-mix(in oklab, var(--brand-primary) 18%, transparent);
 }
 
 /*
@@ -182,9 +182,9 @@
   --color-on-brand: var(--text-on-brand);
 
   /* Brand */
-  --color-brand: var(--brand-red);
-  --color-brand-deep: var(--brand-red-deep);
-  --color-brand-tint: var(--brand-red-tint);
+  --color-brand: var(--brand-primary);
+  --color-brand-deep: var(--brand-primary-deep);
+  --color-brand-tint: var(--brand-primary-tint);
   --color-ink: var(--brand-black);
   --color-paper: var(--brand-white);
 
@@ -287,16 +287,16 @@
     font-family: var(--font-mono);
   }
 
-  /* One focus treatment for the whole app, in brand red. */
+  /* One focus treatment for the whole app, in the brand primary. */
   :focus-visible {
-    outline: 2px solid var(--brand-red);
+    outline: 2px solid var(--brand-primary);
     outline-offset: 2px;
   }
 
   /* Native controls -- checkboxes, radios, range thumbs -- tint themselves
      from this rather than each needing an accent-* utility. */
   :root {
-    accent-color: var(--brand-red);
+    accent-color: var(--brand-primary);
   }
 
   /* The date inputs on /calls are the only native pickers in the app; without
@@ -306,7 +306,7 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--brand-red) 24%, transparent);
+    background: color-mix(in oklab, var(--brand-primary) 24%, transparent);
   }
 
   /*
@@ -436,7 +436,7 @@
   }
 
   .brand-mark-reveal { animation: mark-reveal 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-  .brand-pulse       { animation: red-pulse 1600ms ease-in-out infinite; }
+  .brand-pulse       { animation: accent-pulse 1600ms ease-in-out infinite; }
   .card-in           { animation: card-in 400ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .card-in:nth-child(1) { animation-delay: 0ms;   }
   .card-in:nth-child(2) { animation-delay: 80ms;  }

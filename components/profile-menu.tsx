@@ -168,7 +168,7 @@ export function ProfileMenu({
   );
 }
 
-/** Brand-red initial disc -- the one place the mark's colour shows in the rail
+/** Brand-primary initial disc -- the one place the mark's colour shows in the rail
  * besides the wordmark, so the two read as a pair. */
 function Avatar({ email }: { email: string }) {
   return (

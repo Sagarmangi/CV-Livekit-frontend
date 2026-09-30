@@ -122,7 +122,7 @@ export function CoreConfigForm({ agent }: { agent: Agent }) {
               name="first_message_text"
               rows={2}
               defaultValue={agent.first_message_text ?? ""}
-              placeholder="Thanks for calling Kodexo Labs, this is Ava -- how can I help you today?"
+              placeholder="Thanks for calling Codeora Vision, this is Ava -- how can I help you today?"
             />
           </Field>
         </div>
@@ -139,7 +139,7 @@ export function CoreConfigForm({ agent }: { agent: Agent }) {
           name="prompt"
           rows={18}
           defaultValue={agent.prompt}
-          placeholder="You are the receptionist for Kodexo Labs…"
+          placeholder="You are the receptionist for Codeora Vision…"
         />
       </Field>
 
@@ -483,7 +483,7 @@ export function VoiceConfigForm({ agent }: { agent: Agent }) {
       <FieldSet
         legend="Pronunciation dictionary"
         description="Applied to TTS output and used to boost the same terms in STT, so
-          “Kodexo” is both said and heard correctly."
+          “Codeora” is both said and heard correctly."
       >
         {realtime && (
           <InactiveNote>
@@ -500,13 +500,13 @@ export function VoiceConfigForm({ agent }: { agent: Agent }) {
               name: "term",
               kind: "text",
               label: "Written as",
-              placeholder: "Kodexo Labs",
+              placeholder: "Codeora Vision",
             },
             {
               name: "say_as",
               kind: "text",
               label: "Said as",
-              placeholder: "Ko-DEX-oh Labs",
+              placeholder: "Code-OR-uh Vision",
             },
           ]}
           initial={agent.pronunciation_dictionary.map((entry) => ({

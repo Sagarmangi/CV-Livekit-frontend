@@ -7,7 +7,7 @@
  * and what the three choices mean.
  */
 
-export const THEME_STORAGE_KEY = "kodexo-theme";
+export const THEME_STORAGE_KEY = "codeora-theme";
 
 export const THEME_CHOICES = ["system", "light", "dark"] as const;
 

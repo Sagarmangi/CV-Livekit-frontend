@@ -17,7 +17,7 @@ export function CreateAgentForm() {
             id="new-agent-name"
             name="name"
             required
-            placeholder="Kodexo inbound receptionist"
+            placeholder="Codeora Vision inbound receptionist"
           />
         </Field>
       </div>

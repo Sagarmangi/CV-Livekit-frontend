@@ -56,7 +56,7 @@ export async function connectNumber(
       accountSid,
       authToken,
       phoneNumber,
-      friendlyName: friendlyName || `Kodexo voice ${phoneNumber}`,
+      friendlyName: friendlyName || `Codeora Vision voice ${phoneNumber}`,
     });
 
     const { error } = await db().from("external_numbers").insert({

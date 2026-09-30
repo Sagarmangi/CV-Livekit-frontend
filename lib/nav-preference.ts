@@ -5,4 +5,4 @@
  * A cookie rather than localStorage specifically so the first server render
  * already knows the width -- see the note in components/app-sidebar.tsx.
  */
-export const NAV_COLLAPSED_COOKIE = "kodexo-nav-collapsed";
+export const NAV_COLLAPSED_COOKIE = "codeora-nav-collapsed";

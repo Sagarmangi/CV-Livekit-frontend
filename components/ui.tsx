@@ -4,7 +4,7 @@
  * Deliberately plain Tailwind rather than a component library — the dashboard
  * is a handful of admin screens, and the whole surface fits in one file.
  *
- * Every colour, radius, shadow and face here comes from the Kodexo Labs
+ * Every colour, radius, shadow and face here comes from the Codeora Vision
  * visual identity via the semantic utilities set up in app/globals.css
  * (bg-surface, text-muted, border-line, ...). Those resolve through custom
  * properties that flip with the theme, so nothing in this file needs a `dark:`
@@ -475,7 +475,7 @@ const BUTTON_SIZES = {
 } as const;
 
 /* Focus is handled globally (see the `:focus-visible` rule in globals.css) so
- * every interactive element in the app gets the same brand-red ring. */
+ * every interactive element in the app gets the same brand-primary ring. */
 const BUTTON_BASE =
   "inline-flex shrink-0 items-center justify-center rounded-md font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -525,7 +525,7 @@ export function ButtonLink({
   );
 }
 
-/** Inline text link, in brand red. `brand-deep` in light mode for contrast
+/** Inline text link, in the brand primary. `brand-deep` in light mode for contrast
  * against a white surface; the lighter red reads better on a dark one. */
 export function TextLink({
   className,

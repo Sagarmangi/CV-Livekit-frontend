@@ -6,7 +6,7 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 /*
- * The four faces from the Kodexo Labs visual identity (SOT §2), self-hosted by
+ * The four faces from the Codeora Vision visual identity (SOT §2), self-hosted by
  * next/font. Each exposes a CSS variable that globals.css points the SOT's own
  * `--font-*` tokens at.
  *
@@ -36,7 +36,7 @@ const monoFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kodexo Voice Agent Dashboard",
+  title: "Codeora Vision Voice Agent Dashboard",
   description:
     "Configure voice agents, manage Twilio numbers, and review call logs.",
 };

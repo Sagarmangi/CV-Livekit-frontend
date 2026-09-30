@@ -128,7 +128,7 @@ export async function connectExternalNumber({
   }
 
   const trunk = await external.trunking.v1.trunks.create({
-    friendlyName: `Kodexo Voice Agent -- ${phoneNumber}`,
+    friendlyName: `Codeora Vision Voice Agent -- ${phoneNumber}`,
   });
   await external.trunking.v1
     .trunks(trunk.sid)
