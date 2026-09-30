@@ -1,0 +1,451 @@
+@import "tailwindcss";
+@import "./brand-tokens.css";
+
+/*
+ * Everything that applies the Kodexo Labs visual identity. The raw tokens are
+ * held verbatim in brand-tokens.css (see the note at the top of that file);
+ * this file is the only place they get wired into anything, which keeps a
+ * future SOT pull to a single-file overwrite.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* Theme switching                                                            */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * The SOT keys dark mode off `[data-theme="dark"]`, so Tailwind's `dark:`
+ * variant has to follow the same switch instead of its default
+ * `prefers-color-scheme` media query -- otherwise the two disagree the moment
+ * someone picks a theme that isn't their OS setting. `data-theme` is stamped on
+ * <html> before first paint by the inline script in app/layout.tsx.
+ *
+ * In practice almost nothing needs `dark:` anymore: the semantic utilities
+ * below (bg-surface, text-muted, border-line, ...) resolve through custom
+ * properties that flip on their own, so one class covers both themes. This
+ * variant exists for the handful of cases that genuinely can't -- e.g. an
+ * image or a hardcoded overlay.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Native UI -- form controls, scrollbars, the date picker's own popup -- keys
+ * off `color-scheme`, not off our tokens. Without this a dark dashboard still
+ * gets a white date-input calendar and light scrollbars.
+ */
+:root { color-scheme: light; }
+[data-theme="dark"] { color-scheme: dark; }
+
+/*
+ * How far down the viewport the content area actually starts.
+ *
+ * Below `sm` the nav rail becomes a drawer behind a fixed 3.5rem top bar (see
+ * components/app-sidebar.tsx), so anything sticking to the top of the content
+ * column has to clear it. From `sm` up the rail is an in-flow column and there
+ * is nothing overlapping. Sticky offsets read this rather than hardcoding a
+ * breakpoint each, since an inline `style={{ top }}` can't hold a media query.
+ */
+:root { --content-top: 3.5rem; }
+@media (min-width: 40rem) {
+  :root { --content-top: 0px; }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local extension: dark fills for the semantic families                      */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * The SOT defines success/warning/error/info as one light-theme triplet each
+ * and stops there. Used unchanged on a --n-950 canvas, `--error-bg: #FEE2E2`
+ * paints a near-white block in the middle of a dark page. These keep the same
+ * hues but re-derive them as low-alpha tints against the dark canvas, so a
+ * notice reads as a tinted panel in both themes rather than a light patch in
+ * one of them. Tints, not new hues -- nothing here introduces a colour the
+ * SOT doesn't already name.
+ */
+[data-theme="dark"] {
+  --success-bg: color-mix(in oklab, #86EFAC 12%, transparent);
+  --success-border: color-mix(in oklab, #86EFAC 32%, transparent);
+  --success-text: #86EFAC;
+
+  --warning-bg: color-mix(in oklab, #FCD34D 12%, transparent);
+  --warning-border: color-mix(in oklab, #FCD34D 30%, transparent);
+  --warning-text: #FCD34D;
+
+  --error-bg: color-mix(in oklab, var(--brand-red) 14%, transparent);
+  --error-border: color-mix(in oklab, var(--brand-red) 34%, transparent);
+  --error-text: #FCA5A5;
+
+  --info-bg: color-mix(in oklab, #93C5FD 12%, transparent);
+  --info-border: color-mix(in oklab, #93C5FD 30%, transparent);
+  --info-text: #93C5FD;
+
+  /* Reads as a tinted brand wash on a dark canvas rather than near-white. */
+  --brand-red-tint: color-mix(in oklab, var(--brand-red) 18%, transparent);
+}
+
+/*
+ * Local extension: a surface for editable form controls.
+ *
+ * The SOT's three surfaces are canvas / canvas-alt / elevated, and a card is
+ * "elevated" -- which in dark mode is exactly the colour an input would want if
+ * it used the same token, leaving every field invisible against the card it sits
+ * on. So controls get their own step: recessed below the card in dark mode,
+ * white with a defined edge in light mode. Same two-step relationship in both
+ * themes, just inverted, which is what makes a field look like a field.
+ */
+:root {
+  --input-bg: var(--brand-white);
+  --input-border: var(--n-300);
+}
+
+[data-theme="dark"] {
+  --input-bg: var(--n-950);
+  --input-border: var(--n-700);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Font plumbing                                                              */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * The SOT names families by literal name ('Manrope', 'Unbounded', ...). Fonts
+ * here load through next/font (see app/layout.tsx), which self-hosts each one
+ * under a generated family name exposed as a CSS variable -- the literal names
+ * would never match. Same families, same order, same intent; only the handle
+ * changes.
+ *
+ * Bernabeu is a licensed face that isn't on Google Fonts, so `--font-heading`
+ * resolves to the SOT's own documented fallback (Outfit). `--font-display-hyper`
+ * (Anton) is left as-is: nothing in this dashboard uses hyper display, so
+ * there's no reason to ship the file.
+ */
+:root {
+  /* The four faces actually shipped, as next/font exposes them. */
+  --face-display: var(--font-unbounded), 'Parafina Black', sans-serif;
+  --face-heading: var(--font-outfit), system-ui, sans-serif;
+  --face-body: var(--font-manrope), system-ui, sans-serif;
+  --face-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* SOT names re-pointed at those faces -- the base element rules further
+     down read the SOT names, so this is what makes them resolve. */
+  --font-display-statement: var(--face-display);
+  --font-display: var(--face-display);
+  --font-heading: var(--face-heading);
+  --font-body: var(--face-body);
+  --font-mono: var(--face-mono);
+
+  /*
+   * Elevation aliases. The Tailwind bridge below can't say
+   * `--shadow-sm: var(--shadow-sm)` -- key and value would be the same custom
+   * property -- so it reads these instead. `var(--shadow-sm)` here resolves
+   * per-element, which means the dark override in brand-tokens.css flows
+   * through without needing a second copy of this block.
+   */
+  --elev-sm: var(--shadow-sm);
+  --elev-md: var(--shadow-md);
+  --elev-lg: var(--shadow-lg);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tailwind bridge                                                            */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * `inline` matters here: it makes each utility emit `var(--bg-elevated)` rather
+ * than the value that variable happens to hold at build time, which is what
+ * lets one class (`bg-surface`) follow the theme switch at runtime.
+ *
+ * Naming: surfaces are canvas/canvas-alt/surface, lines are line/divider, text
+ * is strong/body/muted/faint. Deliberately not `bg-bg` or `text-text-primary`
+ * -- these read as intent at the call site, which is the whole point of using
+ * them instead of a raw neutral.
+ */
+@theme inline {
+  /* Surfaces */
+  --color-canvas: var(--bg);
+  --color-canvas-alt: var(--bg-alt);
+  --color-surface: var(--bg-elevated);
+
+  /* Lines */
+  --color-line: var(--border);
+  --color-divider: var(--divider);
+
+  /* Editable form controls (local extension, see above) */
+  --color-input: var(--input-bg);
+  --color-input-line: var(--input-border);
+
+  /* Text */
+  --color-strong: var(--text-strong);
+  --color-body: var(--text-primary);
+  --color-muted: var(--text-secondary);
+  --color-faint: var(--text-tertiary);
+  --color-on-brand: var(--text-on-brand);
+
+  /* Brand */
+  --color-brand: var(--brand-red);
+  --color-brand-deep: var(--brand-red-deep);
+  --color-brand-tint: var(--brand-red-tint);
+  --color-ink: var(--brand-black);
+  --color-paper: var(--brand-white);
+
+  /* Neutral ramp, for the rare case a semantic token isn't the right answer */
+  --color-n-50: var(--n-50);
+  --color-n-100: var(--n-100);
+  --color-n-200: var(--n-200);
+  --color-n-300: var(--n-300);
+  --color-n-400: var(--n-400);
+  --color-n-500: var(--n-500);
+  --color-n-600: var(--n-600);
+  --color-n-700: var(--n-700);
+  --color-n-800: var(--n-800);
+  --color-n-900: var(--n-900);
+  --color-n-950: var(--n-950);
+
+  /* Semantic families */
+  --color-success-bg: var(--success-bg);
+  --color-success-border: var(--success-border);
+  --color-success-text: var(--success-text);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-warning-text: var(--warning-text);
+  --color-error-bg: var(--error-bg);
+  --color-error-border: var(--error-border);
+  --color-error-text: var(--error-text);
+  --color-info-bg: var(--info-bg);
+  --color-info-border: var(--info-border);
+  --color-info-text: var(--info-text);
+
+  /* Tertiary accents -- one per surface, never combined (SOT rule) */
+  --color-soft-blue: var(--soft-blue);
+  --color-muted-green: var(--muted-green);
+  --color-soft-amber: var(--soft-amber);
+  --color-soft-purple: var(--soft-purple);
+
+  /* Type -- via the --face-* aliases above, so no key equals its own value */
+  --font-sans: var(--face-body);
+  --font-display: var(--face-display);
+  --font-heading: var(--face-heading);
+  --font-body: var(--face-body);
+  --font-mono: var(--face-mono);
+
+  /* Radius -- overrides Tailwind's own scale so `rounded-md` is the brand's.
+     Literals rather than var() references for the same key-vs-value reason. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Elevation -- see the --elev-* aliases above */
+  --shadow-sm: var(--elev-sm);
+  --shadow-md: var(--elev-md);
+  --shadow-lg: var(--elev-lg);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Base element rules (SOT §2)                                                */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Kept inside `@layer base` rather than unlayered as they appear in the SOT.
+ * Unlayered rules outrank every cascade layer, including Tailwind's utilities
+ * -- so an unlayered `h1 { font-family: ... }` would quietly beat a
+ * `font-heading` class on that same h1 and make the utility look broken.
+ */
+@layer base {
+  body {
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    background: var(--bg);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* The /agents layout breaks out of <main>'s max-w centering with a
+       100vw-wide wrapper (see agents/layout.tsx) so the sidebar can sit flush
+       against the viewport edge on wide screens -- 100vw can exceed 100% by the
+       scrollbar's width, so this keeps that from adding a horizontal scrollbar. */
+    overflow-x: hidden;
+  }
+
+  /* H1 = Statement (Unbounded 900) per sot/visual-identity.md §2 */
+  h1 {
+    font-family: var(--font-display-statement);
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: var(--text-strong);
+  }
+
+  /* H2 / H3 / H4 = Heading (Bernabeu) per sot/visual-identity.md §2 */
+  h2, h3, h4 {
+    font-family: var(--font-heading);
+    color: var(--text-strong);
+    line-height: 1.2;
+  }
+
+  code, pre, kbd {
+    font-family: var(--font-mono);
+  }
+
+  /* One focus treatment for the whole app, in brand red. */
+  :focus-visible {
+    outline: 2px solid var(--brand-red);
+    outline-offset: 2px;
+  }
+
+  /* Native controls -- checkboxes, radios, range thumbs -- tint themselves
+     from this rather than each needing an accent-* utility. */
+  :root {
+    accent-color: var(--brand-red);
+  }
+
+  /* The date inputs on /calls are the only native pickers in the app; without
+     this their glyph stays near-black on a dark canvas. */
+  [data-theme="dark"] ::-webkit-calendar-picker-indicator {
+    filter: invert(1) opacity(0.7);
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--brand-red) 24%, transparent);
+  }
+
+  /*
+   * Windows renders the default scrollbar as a wide grey channel with stepper
+   * arrows, which looks like a 1990s control panel next to everything else
+   * here. This is the same thin, track-less thumb in both engines.
+   */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--n-400) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    /* The transparent border plus background-clip is what insets the thumb
+       inside the track without needing a track colour. */
+    background: var(--n-300);
+    background-clip: content-box;
+    border: 3px solid transparent;
+    border-radius: var(--radius-pill);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--n-400);
+    background-clip: content-box;
+  }
+  [data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--n-700);
+    background-clip: content-box;
+  }
+  [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--n-600);
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/**
+ * For a strip that scrolls sideways but shouldn't advertise it -- the agent
+ * tab bar. Note that `overflow-x: auto` alone also turns overflow-y into auto
+ * (a non-visible value on one axis forces the other), so anything using this
+ * generally wants `overflow-y-hidden` alongside it: a selected tab's 1px
+ * underline is enough to trip a vertical scrollbar otherwise.
+ */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Brand type + motion helpers (SOT)                                          */
+/* -------------------------------------------------------------------------- */
+
+@layer components {
+  .statement-display {
+    font-family: var(--font-display-statement);
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    line-height: 0.98;
+  }
+
+  /*
+   * The popup for components/dropdown.tsx.
+   *
+   * Both directions animate, which is the whole reason this is CSS and not a
+   * timed unmount in JS: `display` is in the transition list with
+   * `allow-discrete`, so the browser keeps the element visible for the duration
+   * of the closing transition and only then applies `display: none`.
+   * `@starting-style` supplies the pre-open values, since an element switching
+   * out of `display: none` otherwise has no previous state to animate from.
+   *
+   * Where either feature is missing the menu simply appears and disappears
+   * instantly -- no layout or behaviour depends on the animation.
+   */
+  .dropdown-menu {
+    display: none;
+    opacity: 0;
+    translate: 0 -0.25rem;
+    scale: 0.98;
+    transform-origin: top center;
+    transition:
+      opacity 140ms ease,
+      translate 140ms ease,
+      scale 140ms ease,
+      display 140ms allow-discrete;
+  }
+
+  .dropdown-menu[data-open="true"] {
+    display: block;
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+
+  @starting-style {
+    .dropdown-menu[data-open="true"] {
+      opacity: 0;
+      translate: 0 -0.25rem;
+      scale: 0.98;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dropdown-menu {
+      transition: display 0s allow-discrete;
+    }
+  }
+
+  /* Small all-caps monospace eyebrow -- used for table headers, metadata
+     labels, and the status line in the test-call panel. */
+  .mono-kicker {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .brand-mark-reveal { animation: mark-reveal 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .brand-pulse       { animation: red-pulse 1600ms ease-in-out infinite; }
+  .card-in           { animation: card-in 400ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .card-in:nth-child(1) { animation-delay: 0ms;   }
+  .card-in:nth-child(2) { animation-delay: 80ms;  }
+  .card-in:nth-child(3) { animation-delay: 160ms; }
+  .card-in:nth-child(4) { animation-delay: 240ms; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-mark-reveal, .brand-pulse, .card-in {
+      animation: none !important;
+    }
+  }
+}

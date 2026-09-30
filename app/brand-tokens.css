@@ -1,0 +1,107 @@
+/* Kodexo Labs Visual Identity v1.0 — Design Tokens
+ * Source of truth: sot/visual-identity.tokens.json
+ * Live preview: https://kodexo-brand-identity.vercel.app
+ * DO NOT modify locally. Pull from the SOT and bump the version below if updated.
+ *
+ * Held verbatim from the SOT, custom properties and keyframes only. Everything
+ * that *applies* these tokens -- the element rules, the Tailwind bridge, the
+ * font plumbing, the dark-mode fills the SOT leaves open -- lives in
+ * globals.css instead, so a future SOT pull can overwrite this file wholesale
+ * without stepping on anything local.
+ */
+
+:root {
+  /* ── Brand ───────────────────────────────────────── */
+  --brand-red: #F54545;
+  --brand-red-deep: #B22424;
+  --brand-red-tint: #FFE1E1;
+  --brand-black: #0A0A0F;
+  --brand-white: #FFFFFF;
+  --brand-gradient-a: linear-gradient(135deg, #F54545 0%, #FF8A8A 100%);
+  --brand-gradient-b: linear-gradient(135deg, #B22424 0%, #F54545 100%);
+
+  /* ── Neutrals ────────────────────────────────────── */
+  --n-50:  #FAFAFB;
+  --n-100: #F4F4F5;
+  --n-200: #E4E4E7;
+  --n-300: #D4D4D8;
+  --n-400: #A1A1AA;
+  --n-500: #71717A;
+  --n-600: #52525B;
+  --n-700: #3F3F46;
+  --n-800: #27272A;
+  --n-900: #18181B;
+  --n-950: #09090B;
+
+  /* ── Semantic ────────────────────────────────────── */
+  --success-bg: #DCFCE7;   --success-border: #86EFAC;   --success-text: #166534;
+  --warning-bg: #FEF3C7;   --warning-border: #FCD34D;   --warning-text: #92400E;
+  --error-bg:   #FEE2E2;   --error-border:   #FCA5A5;   --error-text:   #991B1B;
+  --info-bg:    #DBEAFE;   --info-border:    #93C5FD;   --info-text:    #1E40AF;
+
+  /* ── Tertiary (use ONE per asset, never combine) ─── */
+  --soft-blue:   #4A7DFF;
+  --muted-green: #5F8F73;
+  --soft-amber:  #E6A600;
+  --soft-purple: #7657E8;
+
+  /* ── Type ────────────────────────────────────────── */
+  --font-display-hyper:     'Anton', 'Parafina Black', sans-serif;
+  --font-display-statement: 'Unbounded', 'Parafina Black', sans-serif;
+  --font-display:           var(--font-display-statement);
+  --font-heading:           'Bernabeu', 'Outfit', system-ui, sans-serif;
+  --font-body:              'Manrope', system-ui, sans-serif;
+  --font-mono:              'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Spacing (4px scale) ─────────────────────────── */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
+  --space-6: 24px;  --space-8: 32px;  --space-12: 48px; --space-16: 64px;
+
+  /* ── Radius ──────────────────────────────────────── */
+  --radius-sm: 6px;  --radius-md: 10px;  --radius-lg: 14px;
+  --radius-xl: 20px; --radius-pill: 999px;
+
+  /* ── Light theme semantic (default) ──────────────── */
+  --bg:           var(--brand-white);
+  --bg-alt:       var(--n-50);
+  --bg-elevated:  var(--brand-white);
+  --border:       var(--n-200);
+  --divider:      var(--n-100);
+  --text-strong:    var(--brand-black);
+  --text-primary:   var(--n-900);
+  --text-secondary: var(--n-600);
+  --text-tertiary:  var(--n-500);
+  --text-on-brand:  var(--brand-white);
+  --shadow-sm: 0 1px 2px rgba(9, 9, 11, 0.04);
+  --shadow-md: 0 4px 16px rgba(9, 9, 11, 0.06);
+  --shadow-lg: 0 24px 48px rgba(9, 9, 11, 0.10);
+}
+
+[data-theme="dark"] {
+  --bg:           var(--n-950);
+  --bg-alt:       var(--n-900);
+  --bg-elevated:  var(--n-800);
+  --border:       var(--n-800);
+  --divider:      var(--n-800);
+  --text-strong:    var(--brand-white);
+  --text-primary:   var(--n-100);
+  --text-secondary: var(--n-400);
+  --text-tertiary:  var(--n-500);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Brand motion ────────────────────────────────── */
+@keyframes mark-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+@keyframes red-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1;    }
+  50%      { transform: scale(1.04); opacity: 0.92; }
+}
+@keyframes card-in {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
