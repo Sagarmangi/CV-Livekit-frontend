@@ -153,7 +153,7 @@ export function AppSidebar({
             className="flex min-w-0 flex-1 items-center"
           >
             {/* Swapped rather than animated like the nav labels below: the
-                wordmark is ~3:1, so it can't shrink into a 4rem rail legibly --
+                wordmark is ~4:1, so it can't shrink into a 4rem rail legibly --
                 the square mark is what that width is sized for.
 
                 Three states, not two, because "expanded" isn't one width:

@@ -11,7 +11,7 @@ import Image from "next/image";
 export function BrandMark({ size = 32 }: { size?: number }) {
   return (
     <Image
-      src="/codeora-vision-mark.png"
+      src="/logo-mark.png"
       alt=""
       width={size}
       height={size}
@@ -33,8 +33,9 @@ const WORDMARK_RATIO = 1515 / 390;
  *
  * Two files, swapped by CSS rather than by reading the theme in JS: the lettering
  * is dark in one and white in the other, so neither survives both backgrounds.
- * `-on-light` is the dark-lettered file for the light theme, `-on-dark` the
- * white-lettered one. `dark:` here resolves through the `data-theme="dark"`
+ * The filenames name the lettering, not the theme: `logo-h-dark.png` has dark
+ * text and is the light-theme file, `logo-h-light.png` has white text and is
+ * the dark-theme one. `dark:` here resolves through the `data-theme="dark"`
  * custom variant in globals.css, which means the right one is correct in the
  * very first paint -- a JS-chosen src would flash the wrong colour on load, and
  * it would be the *invisible* one against its own background.
@@ -54,13 +55,13 @@ export function BrandWordmark({ height = 36 }: { height?: number }) {
       <Image
         {...size}
         alt="Codeora Vision"
-        src="/codeora-vision-logo-on-light.png"
+        src="/logo-h-dark.png"
         className="shrink-0 dark:hidden"
       />
       <Image
         {...size}
         alt="Codeora Vision"
-        src="/codeora-vision-logo-on-dark.png"
+        src="/logo-h-light.png"
         className="hidden shrink-0 dark:block"
       />
     </>
