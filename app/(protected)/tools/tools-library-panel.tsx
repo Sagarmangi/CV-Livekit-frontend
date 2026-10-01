@@ -72,7 +72,7 @@ export function ToolsLibraryPanel({ tools }: { tools: Tool[] }) {
                     <span
                       className={
                         active
-                          ? "block truncate font-mono text-sm font-semibold text-brand-deep dark:text-brand"
+                          ? "block truncate font-mono text-sm font-semibold text-brand-text"
                           : "block truncate font-mono text-sm font-medium text-body"
                       }
                     >

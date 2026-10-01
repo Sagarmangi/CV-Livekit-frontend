@@ -104,7 +104,7 @@ export default async function CallDetailPage({
             {agent ? (
               <Link
                 href={`/agents/${agent.agent_id}`}
-                className="font-medium text-brand-deep underline-offset-2 hover:underline dark:text-brand"
+                className="font-medium text-brand-text underline-offset-2 hover:underline"
               >
                 {agent.name}
               </Link>

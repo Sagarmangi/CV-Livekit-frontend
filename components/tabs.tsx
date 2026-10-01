@@ -46,7 +46,7 @@ export function Tabs({
               onClick={() => setActive(tab.key)}
               className={
                 selected
-                  ? "-mb-px shrink-0 border-b-2 border-brand py-3 text-sm font-semibold text-strong"
+                  ? "-mb-px shrink-0 border-b-2 border-brand-text py-3 text-sm font-semibold text-strong"
                   : "-mb-px shrink-0 border-b-2 border-transparent py-3 text-sm font-medium text-muted transition-colors hover:border-line hover:text-strong"
               }
             >

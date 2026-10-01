@@ -174,7 +174,7 @@ export default async function CallsPage({
                       // Without it the row link would swallow the click.
                       <Link
                         href={`/agents/${call.agent_id}`}
-                        className="relative z-10 font-medium text-brand-deep underline-offset-2 hover:underline dark:text-brand"
+                        className="relative z-10 font-medium text-brand-text underline-offset-2 hover:underline"
                       >
                         {agentNames.get(call.agent_id) ?? "deleted agent"}
                       </Link>

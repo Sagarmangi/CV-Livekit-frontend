@@ -71,7 +71,7 @@ export function AgentsSidebar({ agents }: { agents: AgentListItem[] }) {
                     <span
                       className={
                         active
-                          ? "truncate text-sm font-semibold text-brand-deep dark:text-brand"
+                          ? "truncate text-sm font-semibold text-brand-text"
                           : "truncate text-sm font-medium text-body"
                       }
                     >

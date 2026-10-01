@@ -58,7 +58,7 @@ function SummaryCard({
         <Link
           href={editHref}
           aria-label={`Edit ${label.toLowerCase()}`}
-          className="rounded-md p-1 text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:bg-canvas-alt hover:text-brand focus-visible:opacity-100"
+          className="rounded-md p-1 text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:bg-canvas-alt hover:text-brand-text focus-visible:opacity-100"
         >
           <PencilIcon />
         </Link>

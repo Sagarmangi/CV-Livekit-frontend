@@ -156,7 +156,7 @@ export function ProfileMenu({
             <button
               type="submit"
               role="menuitem"
-              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-muted transition-colors hover:bg-canvas-alt hover:text-brand"
+              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-muted transition-colors hover:bg-canvas-alt hover:text-brand-text"
             >
               <SignOutIcon />
               Sign out

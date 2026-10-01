@@ -376,7 +376,7 @@ const DOT_TONES = {
   neutral: "bg-n-400",
   green: "bg-success-text",
   amber: "bg-warning-text",
-  red: "bg-brand",
+  red: "bg-error-text",
   blue: "bg-info-text",
   violet: "bg-soft-purple",
 } as const;
@@ -459,8 +459,8 @@ export function CallStatusBadge({
 /* -------------------------------------------------------------------------- */
 
 const BUTTON_VARIANTS = {
-  /** Brand red -- one per view, on the action that view exists to perform. */
-  primary: "bg-brand text-on-brand hover:bg-brand-deep",
+  /** Brand gradient -- one per view, on the action that view exists to perform. */
+  primary: "bg-brand-gradient text-on-brand hover:bg-brand-gradient-deep",
   secondary:
     "border border-line bg-surface text-body hover:bg-canvas-alt hover:text-strong",
   danger:
@@ -525,8 +525,8 @@ export function ButtonLink({
   );
 }
 
-/** Inline text link, in the brand primary. `brand-deep` in light mode for contrast
- * against a white surface; the lighter red reads better on a dark one. */
+/** Inline text link, in the brand primary. `brand-text` is the deep blue on a
+ * white surface and a lifted blue on a dark one (see globals.css). */
 export function TextLink({
   className,
   ...props
@@ -535,7 +535,7 @@ export function TextLink({
     <Link
       {...props}
       className={cx(
-        "font-medium text-brand-deep underline-offset-2 transition-colors hover:underline dark:text-brand",
+        "font-medium text-brand-text underline-offset-2 transition-colors hover:underline",
         className,
       )}
     />
@@ -559,7 +559,7 @@ const CONTROL_BASE =
  * so a field sharing that token has no edge to it at all in dark mode. This one
  * is recessed instead -- see the note on --input-bg in globals.css. */
 const CONTROL_SURFACE =
-  "border-input-line bg-input text-body focus:border-brand";
+  "border-input-line bg-input text-body focus:border-brand-text";
 
 const CONTROL = `${CONTROL_BASE} ${CONTROL_SURFACE}`;
 
@@ -567,7 +567,7 @@ const CONTROL = `${CONTROL_BASE} ${CONTROL_SURFACE}`;
  * that uses them -- see TRIGGER_TONES in components/dropdown.tsx. */
 
 const FIELD_BADGE_CLASSES: Record<"required" | "optional", string> = {
-  required: "bg-brand-tint text-brand-deep dark:text-brand",
+  required: "bg-brand-tint text-brand-text",
   optional: "bg-canvas-alt text-faint",
 };
 
@@ -582,7 +582,7 @@ export function InfoTooltip({ text }: { text: ReactNode }) {
     <span className="group/tooltip relative inline-flex">
       <button
         type="button"
-        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-pill border border-n-400 font-mono text-[0.625rem] leading-none font-medium text-faint transition-colors hover:border-brand hover:text-brand"
+        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-pill border border-n-400 font-mono text-[0.625rem] leading-none font-medium text-faint transition-colors hover:border-brand-text hover:text-brand-text"
         aria-label="More info"
       >
         i
@@ -695,7 +695,7 @@ export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
  * into a form the same way. */
 
 /** The one-character glyph that stands in for a tool's type (see
- * lib/tool-display.ts for which character means what). Brand red on a plain
+ * lib/tool-display.ts for which character means what). Brand blue on a plain
  * surface -- these appear in lists of a dozen, so a filled colour block each
  * would fight everything around them. */
 /**
@@ -708,7 +708,7 @@ export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
  * platform" number badge (see BADGE_TONES).
  */
 const GLYPH_TONES = {
-  brand: "border-brand/35 bg-brand-tint text-brand",
+  brand: "border-brand/35 bg-brand-tint text-brand-text",
   blue: "border-info-border bg-info-bg text-info-text",
   green: "border-success-border bg-success-bg text-success-text",
   amber: "border-warning-border bg-warning-bg text-warning-text",
@@ -759,7 +759,7 @@ export function Checkbox({ className, ...props }: ComponentProps<"input">) {
       {...props}
       type="checkbox"
       // accent-color comes from the global `:root` rule, so a checked box is
-      // brand red without every call site restating it.
+      // brand blue without every call site restating it.
       className={cx("size-4 rounded-sm border-line", className)}
     />
   );

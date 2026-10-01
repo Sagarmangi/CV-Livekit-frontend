@@ -8,7 +8,7 @@ import { DEEPGRAM_VOICES, findDeepgramVoice, type DeepgramVoice } from "@/lib/de
  * combobox rather than a plain <input>, so it can't use the Input primitive,
  * but it has to look identical to the fields around it. */
 const CONTROL =
-  "w-full rounded-md border border-input-line bg-input px-3 py-2 text-sm text-body transition-colors placeholder:text-faint focus:border-brand";
+  "w-full rounded-md border border-input-line bg-input px-3 py-2 text-sm text-body transition-colors placeholder:text-faint focus:border-brand-text";
 
 const MAX_RESULTS = 40;
 

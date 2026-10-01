@@ -1,8 +1,9 @@
 /* Codeora Vision Visual Identity — Design Tokens
  * Source of truth: sot/visual-identity.tokens.json
- * The palette and type values below are still carried over from the previous
- * identity; replace them from the Codeora Vision SOT when it lands, and bump
- * the version here when you do. DO NOT modify locally otherwise.
+ * Brand palette (primary deep blue, secondary orange, the button gradient) is
+ * Codeora Vision's, sampled from the logo artwork. Neutrals, semantic families,
+ * type, spacing and radius are carried over unchanged from the previous
+ * identity. Update from the SOT when it lands; DO NOT modify locally otherwise.
  *
  * Held verbatim from the SOT, custom properties and keyframes only. Everything
  * that *applies* these tokens -- the element rules, the Tailwind bridge, the
@@ -13,13 +14,15 @@
 
 :root {
   /* ── Brand ───────────────────────────────────────── */
-  --brand-primary: #F54545;
-  --brand-primary-deep: #B22424;
-  --brand-primary-tint: #FFE1E1;
+  --brand-primary: #043FFF;        /* deep blue, from the logo */
+  --brand-primary-deep: #0330CC;   /* hover/pressed, and link text on white */
+  --brand-primary-tint: #E3EAFF;
+  --brand-secondary: #FEA63D;      /* orange, from the logo */
   --brand-black: #0A0A0F;
   --brand-white: #FFFFFF;
-  --brand-gradient-a: linear-gradient(135deg, #F54545 0%, #FF8A8A 100%);
-  --brand-gradient-b: linear-gradient(135deg, #B22424 0%, #F54545 100%);
+  /* Primary buttons. -b is the hover state: same stops, deep blue. */
+  --brand-gradient-a: linear-gradient(178deg, #043FFF 40%, #FEA63D 100%);
+  --brand-gradient-b: linear-gradient(178deg, #0330CC 40%, #FEA63D 100%);
 
   /* ── Neutrals ────────────────────────────────────── */
   --n-50:  #FAFAFB;

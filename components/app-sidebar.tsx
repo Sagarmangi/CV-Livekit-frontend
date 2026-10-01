@@ -189,7 +189,7 @@ export function AppSidebar({
           aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
           aria-pressed={collapsed}
           title={collapsed ? "Expand navigation" : "Collapse navigation"}
-          className="absolute top-20 -right-3 z-40 hidden h-6 w-6 items-center justify-center rounded-pill border border-line bg-surface text-faint shadow-sm transition-colors hover:text-brand lg:flex"
+          className="absolute top-20 -right-3 z-40 hidden h-6 w-6 items-center justify-center rounded-pill border border-line bg-surface text-faint shadow-sm transition-colors hover:text-brand-text lg:flex"
         >
           <CollapseIcon collapsed={collapsed} />
         </button>
@@ -231,7 +231,7 @@ export function AppSidebar({
                               ? "justify-center px-0 max-lg:justify-center"
                               : "px-2.5 max-lg:justify-center",
                           active
-                            ? "bg-brand-tint font-semibold text-brand-deep dark:text-brand"
+                            ? "bg-brand-tint font-semibold text-brand-text"
                             : "font-medium text-muted hover:bg-surface hover:text-strong",
                         ].join(" ")}
                       >

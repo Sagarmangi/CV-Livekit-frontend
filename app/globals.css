@@ -71,8 +71,8 @@
   --warning-border: color-mix(in oklab, #FCD34D 30%, transparent);
   --warning-text: #FCD34D;
 
-  --error-bg: color-mix(in oklab, var(--brand-primary) 14%, transparent);
-  --error-border: color-mix(in oklab, var(--brand-primary) 34%, transparent);
+  --error-bg: color-mix(in oklab, #FCA5A5 12%, transparent);
+  --error-border: color-mix(in oklab, #FCA5A5 30%, transparent);
   --error-text: #FCA5A5;
 
   --info-bg: color-mix(in oklab, #93C5FD 12%, transparent);
@@ -81,6 +81,23 @@
 
   /* Reads as a tinted brand wash on a dark canvas rather than near-white. */
   --brand-primary-tint: color-mix(in oklab, var(--brand-primary) 18%, transparent);
+}
+
+/*
+ * Local extension: brand colour for text, icons and outlines.
+ *
+ * #043FFF is dark enough that on the --n-950 canvas it falls to ~2.6:1 --
+ * fine as a button fill under white text, unreadable as link text or a focus
+ * ring. So anything that draws *in* the brand colour on a surface reads this
+ * instead: the deep shade on light (it's what links always used there), and
+ * the same blue lifted toward white on dark.
+ */
+:root {
+  --brand-primary-text: var(--brand-primary-deep);
+}
+
+[data-theme="dark"] {
+  --brand-primary-text: color-mix(in oklab, var(--brand-primary) 55%, white);
 }
 
 /*
@@ -185,6 +202,8 @@
   --color-brand: var(--brand-primary);
   --color-brand-deep: var(--brand-primary-deep);
   --color-brand-tint: var(--brand-primary-tint);
+  --color-brand-text: var(--brand-primary-text);
+  --color-accent: var(--brand-secondary);
   --color-ink: var(--brand-black);
   --color-paper: var(--brand-white);
 
@@ -289,7 +308,7 @@
 
   /* One focus treatment for the whole app, in the brand primary. */
   :focus-visible {
-    outline: 2px solid var(--brand-primary);
+    outline: 2px solid var(--brand-primary-text);
     outline-offset: 2px;
   }
 
@@ -364,6 +383,16 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* The primary-button fill. Gradients are background-image, which Tailwind's
+   bg-* colour utilities don't set, so these are utilities of their own --
+   defined with @utility so `hover:` and `disabled:` variants work on them. */
+@utility bg-brand-gradient {
+  background-image: var(--brand-gradient-a);
+}
+@utility bg-brand-gradient-deep {
+  background-image: var(--brand-gradient-b);
 }
 
 /* -------------------------------------------------------------------------- */

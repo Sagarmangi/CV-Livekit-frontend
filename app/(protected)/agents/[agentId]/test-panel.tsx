@@ -659,12 +659,12 @@ function ConnectedPanelBody({
                   agentReady ? "Type a message to the agent…" : "Waiting for the agent to join…"
                 }
                 aria-label="Type a message to the agent"
-                className="min-w-0 flex-1 rounded-md border border-line bg-canvas-alt px-2.5 py-1.5 text-sm text-body placeholder:text-faint focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-w-0 flex-1 rounded-md border border-line bg-canvas-alt px-2.5 py-1.5 text-sm text-body placeholder:text-faint focus:border-brand-text focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={!draft.trim() || !agentReady}
-                className="shrink-0 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-on-brand transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-40"
+                className="shrink-0 rounded-md bg-brand-gradient px-3 py-1.5 text-sm font-medium text-on-brand transition-colors hover:bg-brand-gradient-deep disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Send
               </button>
@@ -783,7 +783,7 @@ function StatusBar({
               type="button"
               onClick={onHangUp}
               aria-label="End test call"
-              className="flex h-8 w-8 items-center justify-center rounded-pill bg-brand text-on-brand transition-colors hover:bg-brand-deep"
+              className="flex h-8 w-8 items-center justify-center rounded-pill border border-error-border bg-error-bg text-error-text transition-colors hover:bg-error-border"
             >
               <HangUpIcon />
             </button>

@@ -204,7 +204,7 @@ export function Dropdown({
         className={cx(
           "flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
           TRIGGER_TONES[tone],
-          open && "border-brand",
+          open && "border-brand-text",
         )}
       >
         <span className="flex min-w-0 items-center gap-2">
@@ -319,7 +319,7 @@ function CheckIcon({ visible }: { visible: boolean }) {
       strokeWidth={2.5}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={cx("mt-0.5 h-3.5 w-3.5 shrink-0 text-brand", !visible && "invisible")}
+      className={cx("mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-text", !visible && "invisible")}
     >
       <path d="m5 13 4 4L19 7" />
     </svg>
