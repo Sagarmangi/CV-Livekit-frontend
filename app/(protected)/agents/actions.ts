@@ -1,5 +1,7 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -25,8 +27,15 @@ import type {
   LLMProvider,
   PronunciationEntry,
   QualificationCriterion,
+  WidgetConfig,
 } from "@/lib/types";
 import { AGENT_STATUSES, FIRST_MESSAGE_MODES, LLM_PROVIDERS } from "@/lib/types";
+import {
+  isHexColor,
+  normalizeOrigin,
+  WIDGET_LIMITS,
+  WIDGET_MAX_SECONDS,
+} from "@/lib/widget-config";
 
 /**
  * An agent can be switched to "active" with an LLM provider whose API key
@@ -392,6 +401,131 @@ export async function updateAgentKnowledgeBase(
 
     revalidatePath(`/agents/${agentId}`);
     return ok("Saved.");
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Web widget                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** `wk_` + 24 URL-safe characters (18 random bytes). Public, so it only has
+ * to be unguessable enough that nobody can enumerate agents by it. */
+function generateWidgetKey(): string {
+  return `wk_${randomBytes(18).toString("base64url")}`;
+}
+
+export async function updateAgentWidget(
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  return guard(async () => {
+    const agentId = str(form, "agent_id");
+    if (!agentId) return fail("Missing agent id.");
+
+    const enabled = bool(form, "widget_enabled");
+
+    // Stored as the exact origins browsers send, whatever shape they were
+    // typed in -- the session API compares them literally.
+    const origins: string[] = [];
+    for (const row of rows(form, ["widget_origin"] as const)) {
+      if (!row.widget_origin) continue;
+      const origin = normalizeOrigin(row.widget_origin);
+      if (!origin) {
+        return fail(
+          `"${row.widget_origin}" isn't a valid site origin -- use the scheme and host only, like https://example.com.`,
+        );
+      }
+      if (!origins.includes(origin)) origins.push(origin);
+    }
+
+    const accent = optionalStr(form, "widget_accent_color");
+    if (accent && !isHexColor(accent)) {
+      return fail("Accent colour must be a six-digit hex value like #043FFF.");
+    }
+
+    const buttonLabel = optionalStr(form, "widget_button_label");
+    if (buttonLabel && buttonLabel.length > WIDGET_LIMITS.buttonLabel) {
+      return fail(`Button label must be ${WIDGET_LIMITS.buttonLabel} characters or fewer.`);
+    }
+
+    const greeting = optionalStr(form, "widget_greeting");
+    if (greeting && greeting.length > WIDGET_LIMITS.greeting) {
+      return fail(`Greeting must be ${WIDGET_LIMITS.greeting} characters or fewer.`);
+    }
+
+    const maxSeconds = num(form, "widget_max_seconds") ?? WIDGET_MAX_SECONDS.fallback;
+    if (
+      !Number.isInteger(maxSeconds) ||
+      maxSeconds < WIDGET_MAX_SECONDS.min ||
+      maxSeconds > WIDGET_MAX_SECONDS.max
+    ) {
+      return fail(
+        `Max call length must be a whole number of seconds between ${WIDGET_MAX_SECONDS.min} and ${WIDGET_MAX_SECONDS.max}.`,
+      );
+    }
+
+    // Only the fields actually set are stored, so the widget page's defaults
+    // apply to anything left blank rather than a saved empty string.
+    const config: WidgetConfig = {
+      ...(accent ? { accent_color: accent.toUpperCase() } : {}),
+      ...(buttonLabel ? { button_label: buttonLabel } : {}),
+      ...(greeting ? { greeting } : {}),
+    };
+
+    // Enabling the widget is the moment a key is first needed -- issue one
+    // here so the embed panel has something to show without a second click.
+    const { data: current, error: fetchError } = await db()
+      .from("agents")
+      .select("widget_key")
+      .eq("agent_id", agentId)
+      .maybeSingle();
+    if (fetchError) return fail(fetchError.message);
+    const widgetKey = current?.widget_key ?? (enabled ? generateWidgetKey() : null);
+
+    const { error } = await db()
+      .from("agents")
+      .update({
+        widget_enabled: enabled,
+        widget_allowed_origins: origins,
+        widget_config: config,
+        widget_max_seconds: maxSeconds,
+        ...(widgetKey && widgetKey !== current?.widget_key ? { widget_key: widgetKey } : {}),
+      })
+      .eq("agent_id", agentId);
+
+    if (error) return fail(`Could not save: ${error.message}`);
+
+    revalidatePath(`/agents/${agentId}`);
+    return ok(
+      enabled && origins.length === 0
+        ? "Saved -- but no domains are allowed yet, so the widget won't take calls until one is added."
+        : "Saved.",
+    );
+  });
+}
+
+/**
+ * Also the "Generate key" action for an agent that has none yet -- the same
+ * write either way. Regenerating is the only way to revoke access: the key is
+ * in the page source of every site that embeds it, and the allowlist can't
+ * help against a site that is on it.
+ */
+export async function regenerateWidgetKey(
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  return guard(async () => {
+    const agentId = str(form, "agent_id");
+    if (!agentId) return fail("Missing agent id.");
+
+    const { error } = await db()
+      .from("agents")
+      .update({ widget_key: generateWidgetKey() })
+      .eq("agent_id", agentId);
+    if (error) return fail(`Could not issue a new key: ${error.message}`);
+
+    revalidatePath(`/agents/${agentId}`);
+    return ok("New key issued.");
   });
 }
 

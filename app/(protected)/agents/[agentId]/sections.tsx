@@ -8,6 +8,7 @@ import {
   updateAgentCore,
   updateAgentKnowledgeBase,
   updateAgentVoice,
+  updateAgentWidget,
 } from "@/app/(protected)/agents/actions";
 import { Dropdown } from "@/components/dropdown";
 import { ActionButton, ActionForm } from "@/components/form";
@@ -34,6 +35,12 @@ import {
   FIRST_MESSAGE_MODES,
   LLM_PROVIDERS,
 } from "@/lib/types";
+import {
+  WIDGET_DEFAULT_ACCENT,
+  WIDGET_DEFAULT_BUTTON_LABEL,
+  WIDGET_LIMITS,
+  WIDGET_MAX_SECONDS,
+} from "@/lib/widget-config";
 
 /* Short enough to read in full inside the closed <select>; the trade-offs live
  * in the tooltips below rather than being truncated mid-word. */
@@ -562,6 +569,143 @@ export function KnowledgeBaseForm({ agent }: { agent: Agent }) {
           placeholder="Paste FAQs, policies, pricing -- anything the agent should be able to answer from."
         />
       </Field>
+    </ActionForm>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Web widget                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The embeddable widget's switches and look. The key, snippet and preview are
+ * next door in widget-embed.tsx -- they carry their own actions and can't sit
+ * inside this form.
+ */
+export function WidgetConfigForm({ agent }: { agent: Agent }) {
+  const [enabled, setEnabled] = useState(agent.widget_enabled);
+  const noOrigins = agent.widget_allowed_origins.length === 0;
+
+  return (
+    <ActionForm action={updateAgentWidget} pendingLabel="Saving…">
+      <input type="hidden" name="agent_id" value={agent.agent_id} />
+
+      <Field
+        label="Web widget"
+        htmlFor="widget-enabled"
+        badge="off by default"
+        hint="While off, the session API refuses every visitor and the widget shows an unavailable message. Calls only connect while the agent's status is active -- the widget respects the same switch as the phone number."
+      >
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            id="widget-enabled"
+            name="widget_enabled"
+            checked={enabled}
+            onChange={(event) => setEnabled(event.target.checked)}
+          />
+          Let visitors call this agent from embedded websites
+        </label>
+        {enabled && agent.status !== "active" && (
+          <InactiveNote>
+            This agent is {agent.status} -- the widget will load but refuse to start a
+            call until the status is set to active.
+          </InactiveNote>
+        )}
+        {enabled && noOrigins && (
+          <InactiveNote>
+            No domains are allowed yet, so no site can start a call. Add at least one below.
+          </InactiveNote>
+        )}
+      </Field>
+
+      <FieldSet
+        legend="Allowed domains"
+        description="The sites that may embed this widget, matched exactly against the origin the browser reports. https://example.com and https://www.example.com are different entries. Paths are dropped; anything typed without a scheme is taken as https."
+      >
+        <RepeatableRows
+          addLabel="Add domain"
+          emptyHint="No domains yet -- the widget is off until one is added, even when enabled."
+          columns={[
+            {
+              name: "widget_origin",
+              kind: "text",
+              label: "Origin",
+              placeholder: "https://example.com",
+            },
+          ]}
+          initial={agent.widget_allowed_origins.map((origin) => ({ widget_origin: origin }))}
+        />
+      </FieldSet>
+
+      <FieldSet legend="Appearance">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Accent colour"
+            htmlFor="widget-accent-color"
+            badge="optional"
+            hint={`The launcher button, call button and the pulsing ring. Defaults to the brand blue, ${WIDGET_DEFAULT_ACCENT}.`}
+          >
+            <div className="flex items-center gap-3">
+              <Input
+                id="widget-accent-color"
+                name="widget_accent_color"
+                type="color"
+                defaultValue={agent.widget_config.accent_color ?? WIDGET_DEFAULT_ACCENT}
+                className="h-9 w-14 cursor-pointer p-1"
+              />
+              <span className="text-xs text-muted">Pick a colour, or leave the default.</span>
+            </div>
+          </Field>
+          <Field
+            label="Button label"
+            htmlFor="widget-button-label"
+            badge="optional"
+            hint={`What the idle button says. Up to ${WIDGET_LIMITS.buttonLabel} characters; blank means "${WIDGET_DEFAULT_BUTTON_LABEL}".`}
+          >
+            <Input
+              id="widget-button-label"
+              name="widget_button_label"
+              maxLength={WIDGET_LIMITS.buttonLabel}
+              defaultValue={agent.widget_config.button_label ?? ""}
+              placeholder={WIDGET_DEFAULT_BUTTON_LABEL}
+            />
+          </Field>
+        </div>
+        <Field
+          label="Greeting"
+          htmlFor="widget-greeting"
+          badge="optional"
+          hint={`Shown above the button before a call starts -- written text on the page, not what the agent says. Up to ${WIDGET_LIMITS.greeting} characters.`}
+        >
+          <Textarea
+            id="widget-greeting"
+            name="widget_greeting"
+            rows={2}
+            maxLength={WIDGET_LIMITS.greeting}
+            defaultValue={agent.widget_config.greeting ?? ""}
+            placeholder={`Hi! Tap the button to talk to ${agent.name}.`}
+          />
+        </Field>
+      </FieldSet>
+
+      <FieldSet legend="Limits">
+        <Field
+          label="Max call length (seconds)"
+          htmlFor="widget-max-seconds"
+          hint="A widget call is ended at this point by the worker and by the widget itself. Phone and test calls aren't affected. The daily call cap and the live-call limit are deployment-wide settings (WIDGET_DAILY_CAP, MAX_CONCURRENT_CALLS), not per agent."
+        >
+          <Input
+            id="widget-max-seconds"
+            name="widget_max_seconds"
+            type="number"
+            step="1"
+            min={WIDGET_MAX_SECONDS.min}
+            max={WIDGET_MAX_SECONDS.max}
+            defaultValue={agent.widget_max_seconds ?? WIDGET_MAX_SECONDS.fallback}
+            className="sm:w-40"
+          />
+        </Field>
+      </FieldSet>
     </ActionForm>
   );
 }

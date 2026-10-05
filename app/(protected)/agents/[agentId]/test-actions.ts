@@ -1,10 +1,12 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-
-import { AccessToken, AgentDispatchClient } from "livekit-server-sdk";
-
 import { livekitEnv } from "@/lib/env";
+import {
+  dispatchAgent,
+  mintParticipantToken,
+  shortId,
+  WORKER_AGENT_NAME,
+} from "@/lib/livekit";
 
 /**
  * `agentName` and `dispatchId` are returned purely so the browser console can
@@ -22,11 +24,6 @@ export type TestSession = {
 };
 export type TestSessionResult = TestSession | { error: string };
 
-/** Must match the worker's LIVEKIT_AGENT_NAME (see agent-worker/settings.py --
- * it defaults to this same string). A mismatch means dispatches are created
- * successfully and then silently never claimed. */
-const WORKER_AGENT_NAME = "codeora-inbound-agent";
-
 /**
  * Starts a browser-testable session with this agent, entirely local to
  * whatever LiveKit server is configured (no Twilio/SIP involved). An explicit
@@ -36,36 +33,26 @@ const WORKER_AGENT_NAME = "codeora-inbound-agent";
  */
 export async function createTestSession(agentId: string): Promise<TestSessionResult> {
   try {
-    const { url, apiKey, apiSecret } = livekitEnv();
-    const httpUrl = url.replace(/^ws/, "http");
-    const roomName = `test-${agentId}-${randomUUID().slice(0, 8)}`;
+    const { url } = livekitEnv();
+    const roomName = `test-${agentId}-${shortId()}`;
 
-    const dispatch = new AgentDispatchClient(httpUrl, apiKey, apiSecret);
-    const created = await dispatch.createDispatch(roomName, WORKER_AGENT_NAME, {
-      metadata: JSON.stringify({ test_agent_id: agentId }),
-    });
+    const { dispatchId } = await dispatchAgent(roomName, { test_agent_id: agentId });
 
     // Server-side log as well as the browser one: on a deployed box this lands
     // in the dashboard's journal, which is the only place to see that the
     // dashboard and the worker disagree about which LiveKit they're using.
     console.info(
       `[codeora-test] dispatch created room=${roomName} agent=${WORKER_AGENT_NAME} ` +
-        `livekit=${url} dispatch=${created.id ?? "?"}`,
+        `livekit=${url} dispatch=${dispatchId ?? "?"}`,
     );
 
-    const token = new AccessToken(apiKey, apiSecret, {
-      identity: `tester-${randomUUID().slice(0, 8)}`,
-      ttl: "15m",
-    });
-    token.addGrant({ room: roomName, roomJoin: true, canPublish: true, canSubscribe: true });
-
-    return {
-      token: await token.toJwt(),
-      url,
+    const token = await mintParticipantToken({
       roomName,
-      agentName: WORKER_AGENT_NAME,
-      dispatchId: created.id ?? null,
-    };
+      identity: `tester-${shortId()}`,
+      ttlSeconds: 15 * 60,
+    });
+
+    return { token, url, roomName, agentName: WORKER_AGENT_NAME, dispatchId };
   } catch (error) {
     console.error("[codeora-test] dispatch failed", error);
     return { error: `Could not start a test session: ${describeFailure(error)}` };

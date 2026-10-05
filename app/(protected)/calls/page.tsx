@@ -3,8 +3,8 @@ import Link from "next/link";
 import { CallFilters } from "@/app/(protected)/calls/filters";
 import { Pagination } from "@/components/pagination";
 import {
-  Badge,
   Card,
+  ChannelBadge,
   ConfigNotice,
   Duration,
   EmptyState,
@@ -21,7 +21,13 @@ import {
 } from "@/components/ui";
 import { integrationStatus } from "@/lib/env";
 import { listAgents, listCallLogs, type CallLogFilters } from "@/lib/queries";
-import { CALL_OUTCOMES, type CallOutcome } from "@/lib/types";
+import {
+  CALL_CHANNELS,
+  CALL_OUTCOMES,
+  callChannel,
+  type CallChannel,
+  type CallOutcome,
+} from "@/lib/types";
 
 const PAGE_SIZE = 50;
 
@@ -51,12 +57,16 @@ export default async function CallsPage({
   // Query-string values are user input; anything unrecognised is dropped rather
   // than passed through to the database.
   const outcome = single("outcome");
+  const channel = single("channel");
   const from = single("from");
   const to = single("to");
   const filters: CallLogFilters = {
     ...(single("agent") ? { agentId: single("agent") } : {}),
     ...(outcome && CALL_OUTCOMES.includes(outcome as CallOutcome)
       ? { outcome: outcome as CallOutcome }
+      : {}),
+    ...(channel && CALL_CHANNELS.includes(channel as CallChannel)
+      ? { channel: channel as CallChannel }
       : {}),
     ...(from && ISO_DATE.test(from) ? { from } : {}),
     ...(to && ISO_DATE.test(to) ? { to } : {}),
@@ -124,7 +134,8 @@ export default async function CallsPage({
             <thead>
               <tr>
                 <Th>When</Th>
-                <Th>Caller</Th>
+                <Th>Channel</Th>
+                <Th>From</Th>
                 <Th>Agent</Th>
                 <Th>Outcome</Th>
                 <Th>Priority</Th>
@@ -159,8 +170,13 @@ export default async function CallsPage({
                     <Timestamp value={call.created_at} />
                   </Td>
                   <Td>
-                    {call.is_test ? (
-                      <Badge tone="blue">Web call</Badge>
+                    <ChannelBadge channel={callChannel(call)} />
+                  </Td>
+                  <Td>
+                    {/* A widget visitor has no number; the worker records the
+                        site they called from in caller_number instead. */}
+                    {callChannel(call) === "test" ? (
+                      <span className="text-faint">browser test</span>
                     ) : call.caller_number ? (
                       <Mono>{call.caller_number}</Mono>
                     ) : (

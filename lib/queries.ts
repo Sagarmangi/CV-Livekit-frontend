@@ -3,6 +3,7 @@ import "server-only";
 import { db, expect } from "@/lib/supabase";
 import type {
   Agent,
+  CallChannel,
   CallLog,
   CallOutcome,
   ExternalNumber,
@@ -62,6 +63,40 @@ export async function getAgent(agentId: string): Promise<Agent | null> {
   return (data as unknown as Agent) ?? null;
 }
 
+/**
+ * The agent behind a public widget key -- the lookup the widget page and its
+ * session API start from. The key is unique, so at most one row; null for a
+ * key nobody holds (a stale embed after "Regenerate key", or a guess).
+ */
+export async function getAgentByWidgetKey(widgetKey: string): Promise<Agent | null> {
+  const { data, error } = await db()
+    .from("agents")
+    .select("*")
+    .eq("widget_key", widgetKey)
+    .maybeSingle();
+  if (error) throw new Error(`getAgentByWidgetKey: ${error.message}`);
+  return (data as unknown as Agent) ?? null;
+}
+
+/**
+ * Widget calls this agent has taken since midnight UTC, for the per-key daily
+ * cap. Counted from call_logs, which the worker writes when a call *ends* --
+ * so sessions still in progress aren't in the number yet. `head: true` asks
+ * for the count alone, no rows.
+ */
+export async function countWidgetCallsToday(agentId: string): Promise<number> {
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+  const { count, error } = await db()
+    .from("call_logs")
+    .select("call_log_id", { count: "exact", head: true })
+    .eq("agent_id", agentId)
+    .eq("channel", "widget")
+    .gte("created_at", since.toISOString());
+  if (error) throw new Error(`countWidgetCallsToday: ${error.message}`);
+  return count ?? 0;
+}
+
 /** The whole tools library -- shared across every agent (see 0014_global_tools.sql). */
 export async function listAllTools(): Promise<Tool[]> {
   return (await expect(
@@ -82,6 +117,7 @@ export async function listAgentTools(agentId: string): Promise<Tool[]> {
 export type CallLogFilters = {
   agentId?: string;
   outcome?: CallOutcome;
+  channel?: CallChannel;
   /** Inclusive ISO date (YYYY-MM-DD). */
   from?: string;
   /** Inclusive ISO date (YYYY-MM-DD). */
@@ -127,7 +163,7 @@ export async function listCallLogs(
     .select(
       "call_log_id, call_sid, room_id, agent_id, caller_number, recording_url, " +
         "duration_seconds, outcome, matched_department, spam_detection, lead_name, " +
-        "lead_company, lead_need, is_test, created_at, " +
+        "lead_company, lead_need, is_test, channel, created_at, " +
         // The four component costs but not cost_breakdown: the list shows a
         // single figure, and the per-line audit trail is only ever read on the
         // detail page. Same reasoning as leaving transcript out.
@@ -144,6 +180,7 @@ export async function listCallLogs(
 
   if (filters.agentId) query = query.eq("agent_id", filters.agentId);
   if (filters.outcome) query = query.eq("outcome", filters.outcome);
+  if (filters.channel) query = query.eq("channel", filters.channel);
   if (filters.from) query = query.gte("created_at", `${filters.from}T00:00:00Z`);
   // `to` is an inclusive day, so compare against the end of that day.
   if (filters.to) query = query.lte("created_at", `${filters.to}T23:59:59.999Z`);

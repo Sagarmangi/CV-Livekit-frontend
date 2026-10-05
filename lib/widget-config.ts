@@ -1,0 +1,74 @@
+/**
+ * Shared between the dashboard's widget editor, the session API and the
+ * public widget page -- no server-only imports here, since the widget page is
+ * a client component and needs the same defaults the editor shows.
+ */
+
+import type { WidgetConfig } from "@/lib/types";
+
+/** `wk_` plus 16-64 URL-safe characters. The actions issue 24 (base64url of
+ * 18 random bytes); the range leaves room to change that without breaking
+ * keys already embedded on customers' pages. */
+export const WIDGET_KEY_PATTERN = /^wk_[A-Za-z0-9_-]{16,64}$/;
+
+export const WIDGET_MAX_SECONDS = {
+  min: 30,
+  max: 3600,
+  /** Used when the column is somehow null -- the migration's own default. */
+  fallback: 300,
+} as const;
+
+export const WIDGET_LIMITS = {
+  buttonLabel: 40,
+  greeting: 300,
+} as const;
+
+/** The dashboard's brand blue -- what a widget looks like before anyone
+ * picks a colour, so a brand-new one isn't grey. */
+export const WIDGET_DEFAULT_ACCENT = "#043FFF";
+
+export const WIDGET_DEFAULT_BUTTON_LABEL = "Start call";
+
+export type ResolvedWidgetConfig = {
+  accentColor: string;
+  buttonLabel: string;
+  greeting: string;
+};
+
+export function resolveWidgetConfig(
+  config: WidgetConfig | null | undefined,
+  agentName: string,
+): ResolvedWidgetConfig {
+  return {
+    accentColor: isHexColor(config?.accent_color) ? config.accent_color : WIDGET_DEFAULT_ACCENT,
+    buttonLabel: config?.button_label?.trim() || WIDGET_DEFAULT_BUTTON_LABEL,
+    greeting: config?.greeting?.trim() || `Hi! Tap the button to talk to ${agentName}.`,
+  };
+}
+
+export function isHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
+/**
+ * Turns whatever an admin typed into the exact origin a browser will send --
+ * `example.com`, `https://example.com/pricing` and `HTTPS://Example.com` all
+ * become `https://example.com`. Null for anything that isn't an http(s) URL,
+ * so a typo can't be saved as an entry that will never match.
+ *
+ * Exact-origin matching is deliberate: a `www.` host and its bare domain are
+ * different origins to the browser, so they're different entries here too.
+ */
+export function normalizeOrigin(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (!url.hostname || url.username || url.password) return null;
+    return url.origin.toLowerCase();
+  } catch {
+    return null;
+  }
+}

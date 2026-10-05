@@ -1,6 +1,30 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        // The widget page exists to be framed by other people's sites, so it
+        // alone opts out of the same-origin framing default. Scoped to this
+        // path: nothing else in the dashboard may be embedded. Enforcement of
+        // *which* sites is done per agent by the session API's origin
+        // allowlist -- a CSP can't know the key, and an un-allowlisted embed
+        // just gets a widget that refuses to start a call.
+        source: "/widget/:path*",
+        headers: [{ key: "Content-Security-Policy", value: "frame-ancestors *" }],
+      },
+      {
+        // public/ files are served with max-age=0 by default. The loader is
+        // referenced from customers' pages, so an hour of caching keeps every
+        // page view on their site from round-tripping here, while still
+        // picking up a new version the same day it ships.
+        source: "/widget.js",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=3600, stale-while-revalidate=86400" },
+        ],
+      },
+    ];
+  },
   experimental: {
     /**
      * How long the client router may reuse a segment it already has before

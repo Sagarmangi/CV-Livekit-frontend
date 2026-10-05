@@ -15,7 +15,8 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
-import type { AgentStatus, CallOutcome, CallPriority } from "@/lib/types";
+import type { AgentStatus, CallChannel, CallOutcome, CallPriority } from "@/lib/types";
+import { CALL_CHANNEL_LABELS } from "@/lib/types";
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
@@ -433,6 +434,19 @@ const PRIORITY_TONES: Record<CallPriority, keyof typeof BADGE_TONES> = {
 /** How much attention a call deserves, as judged by the post-call analysis.
  * Separate from OutcomeBadge on purpose — a spam call is outcome "spam bot" and
  * priority "Low", and collapsing the two would lose one of them. */
+/** Where a call came from. Only the widget is coloured: it's the one channel
+ * where the other party is an anonymous visitor, which is worth noticing in a
+ * list of phone numbers. */
+const CHANNEL_TONES: Record<CallChannel, keyof typeof BADGE_TONES> = {
+  phone: "neutral",
+  test: "neutral",
+  widget: "blue",
+};
+
+export function ChannelBadge({ channel }: { channel: CallChannel }) {
+  return <Badge tone={CHANNEL_TONES[channel]}>{CALL_CHANNEL_LABELS[channel]}</Badge>;
+}
+
 export function PriorityBadge({ priority }: { priority: CallPriority | null }) {
   if (!priority) return <Empty />;
   return <Badge tone={PRIORITY_TONES[priority]}>{priority}</Badge>;

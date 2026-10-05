@@ -66,6 +66,25 @@ export function livekitEnv() {
 }
 
 /**
+ * Limits on the public web widget. Both optional: the defaults are deliberately
+ * tight, because this is the one surface anyone on the internet can start a
+ * (metered, paid-for) call through without signing in.
+ */
+export function widgetEnv() {
+  return {
+    /** Widget calls one agent may take per UTC day, counted from call_logs. */
+    dailyCap: positiveInt(process.env.WIDGET_DAILY_CAP, 200),
+    /** Live rooms (phone, test and widget together) before the widget says "busy". */
+    maxConcurrentCalls: positiveInt(process.env.MAX_CONCURRENT_CALLS, 2),
+  };
+}
+
+function positiveInt(raw: string | undefined, fallback: number): number {
+  const value = Number(raw);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+/**
  * The voice-pipeline provider keys the agent worker uses -- mirrored here
  * (not required) purely so the dashboard's integrations status page can run
  * live health checks against them. Every field is optional: an agent that

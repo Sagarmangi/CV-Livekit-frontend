@@ -1,21 +1,113 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { ListUpdate } from "@livekit/protocol";
-import { SipClient } from "livekit-server-sdk";
+import {
+  AccessToken,
+  AgentDispatchClient,
+  RoomServiceClient,
+  SipClient,
+} from "livekit-server-sdk";
 
 import { livekitEnv } from "@/lib/env";
+
+/**
+ * Must match the worker's LIVEKIT_AGENT_NAME (see agent-worker/settings.py --
+ * it defaults to this same string). A mismatch means dispatches are created
+ * successfully and then silently never claimed. One constant for every path
+ * that dispatches -- the dashboard test panel and the public web widget -- so
+ * they can't drift apart.
+ */
+export const WORKER_AGENT_NAME = "codeora-inbound-agent";
+
+/**
+ * Room-name prefixes of the three ways a call can start: SIP inbound (the
+ * dispatch rule's prefix), the dashboard's test panel, and the web widget.
+ * Anything else in the room list is not a call and doesn't count toward
+ * MAX_CONCURRENT_CALLS.
+ */
+export const CALL_ROOM_PREFIXES = ["call-", "test-", "widget-"] as const;
+
+// The SDK wants an http(s) host, but the rest of the stack is configured
+// with the ws(s) URL, so accept either and normalize here.
+function httpHost(): string {
+  return livekitEnv().url.replace(/^ws/, "http");
+}
 
 let cached: SipClient | null = null;
 
 function sip() {
   if (!cached) {
-    const { url, apiKey, apiSecret } = livekitEnv();
-    // The SDK wants an http(s) host, but the rest of the stack is configured
-    // with the ws(s) URL, so accept either and normalize here.
-    const host = url.replace(/^ws/, "http");
-    cached = new SipClient(host, apiKey, apiSecret);
+    const { apiKey, apiSecret } = livekitEnv();
+    cached = new SipClient(httpHost(), apiKey, apiSecret);
   }
   return cached;
+}
+
+let cachedRooms: RoomServiceClient | null = null;
+
+function rooms() {
+  if (!cachedRooms) {
+    const { apiKey, apiSecret } = livekitEnv();
+    cachedRooms = new RoomServiceClient(httpHost(), apiKey, apiSecret);
+  }
+  return cachedRooms;
+}
+
+/** Eight hex characters -- enough to keep room and participant names unique
+ * without making them unreadable in logs. */
+export function shortId(): string {
+  return randomUUID().slice(0, 8);
+}
+
+/**
+ * Tells the worker to join `roomName` and load whatever `metadata` describes
+ * (a test_agent_id, or a widget_key). Explicit dispatch, as opposed to the
+ * SIP dispatch rule, because there's no dialed number for the worker to
+ * resolve an agent from -- see entrypoint.py's non-SIP branch.
+ */
+export async function dispatchAgent(
+  roomName: string,
+  metadata: Record<string, unknown>,
+): Promise<{ dispatchId: string | null }> {
+  const { apiKey, apiSecret } = livekitEnv();
+  const client = new AgentDispatchClient(httpHost(), apiKey, apiSecret);
+  const created = await client.createDispatch(roomName, WORKER_AGENT_NAME, {
+    metadata: JSON.stringify(metadata),
+  });
+  return { dispatchId: created.id ?? null };
+}
+
+/** A join token for one browser participant in one room. */
+export async function mintParticipantToken({
+  roomName,
+  identity,
+  ttlSeconds,
+}: {
+  roomName: string;
+  identity: string;
+  ttlSeconds: number;
+}): Promise<string> {
+  const { apiKey, apiSecret } = livekitEnv();
+  const token = new AccessToken(apiKey, apiSecret, { identity, ttl: ttlSeconds });
+  token.addGrant({ room: roomName, roomJoin: true, canPublish: true, canSubscribe: true });
+  return token.toJwt();
+}
+
+/**
+ * How many calls are live right now, across every channel. LiveKit only lists
+ * a room while it exists -- rooms close themselves once empty -- so the list
+ * is the live set, no participant counting needed. A room that was just
+ * created for a dispatch nobody has joined yet is still a call in progress
+ * and counts, which is the point: two widget visitors clicking at once must
+ * not both get past the cap.
+ */
+export async function countActiveCallRooms(): Promise<number> {
+  const all = await rooms().listRooms();
+  return all.filter((room) =>
+    CALL_ROOM_PREFIXES.some((prefix) => room.name.startsWith(prefix)),
+  ).length;
 }
 
 export type SipInboundTrunkSummary = {

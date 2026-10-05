@@ -15,6 +15,15 @@ import { authEnv } from "@/lib/env";
  * "is there a session at all" check plus keeping the cookie fresh.
  */
 export async function proxy(request: NextRequest) {
+  // The embeddable widget is the one part of the app the public reaches: the
+  // loader script, the iframe page and its session API. None of them have a
+  // session to refresh, so they skip the Supabase round trip entirely rather
+  // than paying for it on every visitor's page view. The session API does its
+  // own gating (key, allowlisted origin, rate limits) -- see its route.ts.
+  if (isWidgetPath(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
 
   const { url, anonKey } = authEnv();
@@ -53,6 +62,14 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
+}
+
+function isWidgetPath(pathname: string): boolean {
+  return (
+    pathname === "/widget.js" ||
+    pathname.startsWith("/widget/") ||
+    pathname.startsWith("/api/widget/")
+  );
 }
 
 export const config = {

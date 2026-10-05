@@ -79,6 +79,20 @@ export type PronunciationEntry = {
 };
 
 /**
+ * `agents.widget_config` -- how the embeddable web widget looks for this agent.
+ * Every field optional; `resolveWidgetConfig()` in lib/widget-config.ts fills
+ * in the defaults, so the dashboard and the widget page agree on them.
+ */
+export type WidgetConfig = {
+  /** Six-digit hex, e.g. "#043FFF". Launcher button, call button and ring. */
+  accent_color?: string;
+  /** Idle-state button text. */
+  button_label?: string;
+  /** Text shown above the button before a call starts. */
+  greeting?: string;
+};
+
+/**
  * `agents.conversation_settings` — the FSD Section 4.3 humanness parameters.
  * Every field is optional in the database; the worker applies its own defaults
  * for anything unset, and `CONVERSATION_SETTING_DEFAULTS` below mirrors those
@@ -194,6 +208,24 @@ export type Agent = {
    * in Slack means the webhook is missing, not that the toggle failed.
    */
   slack_notifications_enabled: boolean;
+
+  /* --- Embeddable web widget (agent-worker's web-widget branch) ------------
+   *
+   * A `<script>` on a customer's site opens an iframe onto /widget/<key>,
+   * which asks /api/widget/session for a LiveKit token. The key is public --
+   * it's in the page source of every site that embeds it -- so it identifies
+   * the agent and nothing more; the allowlist below is what gates access. */
+
+  /** Off by default. While off, the session API refuses every request. */
+  widget_enabled: boolean;
+  /** `wk_…` public identifier the embed snippet carries. Null until generated. */
+  widget_key: string | null;
+  /** Exact origins (scheme + host [+ port], no path) allowed to embed. An
+   * empty list means nobody -- a widget is off until a domain is added. */
+  widget_allowed_origins: string[];
+  widget_config: WidgetConfig;
+  /** Hard cap on one widget call, in seconds. The token expires shortly after. */
+  widget_max_seconds: number;
   created_at: string;
   updated_at: string;
 };
@@ -307,6 +339,13 @@ export type CallLog = {
   /** True for a dashboard "Test agent" browser session -- no phone number or Twilio call involved. */
   is_test: boolean;
   /**
+   * Which surface the call came in on. Supersedes `is_test` (kept for rows
+   * written before the column existed -- see `callChannel()`). For "widget"
+   * rows the worker records the embedding site's origin in `caller_number`,
+   * since a browser visitor has no phone number.
+   */
+  channel: CallChannel | null;
+  /**
    * What the call cost, split by the thing that charges for it, frozen at the
    * rates in effect when it ended (see agent-worker/src/worker/pricing.py).
    * Null on every row written before cost tracking existed -- those calls have
@@ -384,6 +423,22 @@ export type CallLog = {
   analysis_model: string | null;
   created_at: string;
 };
+
+/** Mirrors the check constraint on `call_logs.channel` -- keep in step with the worker. */
+export const CALL_CHANNELS = ["phone", "test", "widget"] as const;
+export type CallChannel = (typeof CALL_CHANNELS)[number];
+
+export const CALL_CHANNEL_LABELS: Record<CallChannel, string> = {
+  phone: "Phone",
+  test: "Test",
+  widget: "Widget",
+};
+
+/** The channel, falling back to the old `is_test` flag for rows that predate
+ * the column -- so a null never has to be special-cased where it's shown. */
+export function callChannel(call: Pick<CallLog, "channel" | "is_test">): CallChannel {
+  return call.channel ?? (call.is_test ? "test" : "phone");
+}
 
 export const CALL_PRIORITIES = ["High", "Medium", "Low"] as const;
 export type CallPriority = (typeof CALL_PRIORITIES)[number];

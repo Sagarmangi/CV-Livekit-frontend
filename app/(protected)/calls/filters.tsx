@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Dropdown } from "@/components/dropdown";
 import { Button, Field, Input } from "@/components/ui";
-import { CALL_OUTCOMES } from "@/lib/types";
+import { CALL_CHANNEL_LABELS, CALL_CHANNELS, CALL_OUTCOMES } from "@/lib/types";
 
 /**
  * Filters drive the query string, which the page reads server-side — so a
@@ -20,7 +20,7 @@ export function CallFilters({
 
   function apply(form: FormData) {
     const next = new URLSearchParams();
-    for (const key of ["agent", "outcome", "from", "to"]) {
+    for (const key of ["agent", "channel", "outcome", "from", "to"]) {
       const value = form.get(key);
       if (typeof value === "string" && value !== "") next.set(key, value);
     }
@@ -29,7 +29,7 @@ export function CallFilters({
   }
 
   return (
-    <form action={apply} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <form action={apply} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
       <Field label="Agent" htmlFor="filter-agent">
         <Dropdown
           id="filter-agent"
@@ -40,6 +40,21 @@ export function CallFilters({
             ...agents.map((agent) => ({
               value: agent.agent_id,
               label: agent.name,
+            })),
+          ]}
+        />
+      </Field>
+
+      <Field label="Channel" htmlFor="filter-channel">
+        <Dropdown
+          id="filter-channel"
+          name="channel"
+          defaultValue={params.get("channel") ?? ""}
+          options={[
+            { value: "", label: "All channels" },
+            ...CALL_CHANNELS.map((channel) => ({
+              value: channel,
+              label: CALL_CHANNEL_LABELS[channel],
             })),
           ]}
         />

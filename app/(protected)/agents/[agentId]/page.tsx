@@ -7,10 +7,12 @@ import {
   DeleteAgentButton,
   KnowledgeBaseForm,
   VoiceConfigForm,
+  WidgetConfigForm,
 } from "@/app/(protected)/agents/[agentId]/sections";
 import { AgentIdentityForm } from "@/app/(protected)/agents/[agentId]/identity-form";
 import { AgentModelSummary } from "@/app/(protected)/agents/[agentId]/model-summary";
 import { TestAgentPanelLoader } from "@/app/(protected)/agents/[agentId]/test-panel-loader";
+import { WidgetEmbedPanel } from "@/app/(protected)/agents/[agentId]/widget-embed";
 import {
   Card,
   CollapsibleCard,
@@ -143,6 +145,27 @@ export default async function AgentPage({
                 >
                   <BuiltinTools />
                 </CollapsibleCard>
+              </>
+            ),
+          },
+          {
+            key: "widget",
+            label: "Web widget",
+            content: (
+              <>
+                <Card description="A floating voice button for any website: one script tag opens this agent in an iframe and lets a visitor talk to it from the page. Public, so it's off until enabled and a domain is allowed.">
+                  <WidgetConfigForm key={agent.agent_id} agent={agent} />
+                </Card>
+                <Card
+                  title="Embed"
+                  description="The key, the snippet to paste into a site, and the widget itself as a visitor would see it."
+                >
+                  <WidgetEmbedPanel
+                    agentId={agent.agent_id}
+                    widgetKey={agent.widget_key}
+                    enabled={agent.widget_enabled}
+                  />
+                </Card>
               </>
             ),
           },

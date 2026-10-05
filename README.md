@@ -27,6 +27,7 @@ Fill in `.env.local`. Every value is server-only, and each is documented in
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio console credentials |
 | `TWILIO_SIP_TRUNK_SID` | The one shared Elastic SIP Trunk (`TK…`) |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | The LiveKit server, same key pair as the backend |
+| `WIDGET_DAILY_CAP`, `MAX_CONCURRENT_CALLS` | Optional limits on the public web widget (defaults 200/day and 2 live calls) |
 
 There is no public sign-up. To give someone access, create them in Supabase
 Auth and add them to the `allowed_users` table.
@@ -43,3 +44,18 @@ npm run lint
 The in-browser agent test dispatches the `codeora-inbound-agent` worker and
 listens on the `codeora.diagnostic` text-stream topic. Both names must match
 the backend.
+
+## Web widget
+
+Each agent can be embedded on a customer's site as a floating voice widget:
+
+```html
+<script src="https://voice.codeoravision.com/widget.js" data-key="wk_…" async></script>
+```
+
+Turn it on per agent under its **Web widget** tab, add the site's origin to the
+allowed list, and copy the snippet from there. `public/widget.js` renders the
+launcher and opens an iframe onto `/widget/<key>`, which asks
+`/api/widget/session` for a LiveKit token. That route checks the key, the
+embedding origin, per-IP and per-day limits and the live-call cap before
+dispatching the worker.

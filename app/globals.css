@@ -464,6 +464,27 @@
     color: var(--text-tertiary);
   }
 
+  /*
+   * The web widget's state ring (app/widget/[key]/voice-widget.tsx). One halo
+   * element behind the disc, coloured by the agent's accent via inline style;
+   * these only set how it moves. Speaking pulses outward, listening breathes
+   * slowly, thinking holds a faint steady glow, connecting fades in and out.
+   */
+  .widget-ring-halo { opacity: 0; transform: scale(1); }
+  .widget-ring-connecting { animation: widget-breathe 1.4s ease-in-out infinite; }
+  .widget-ring-listening  { animation: widget-breathe 2.6s ease-in-out infinite; }
+  .widget-ring-thinking   { opacity: 0.18; transform: scale(1.1); }
+  .widget-ring-speaking   { animation: widget-pulse 1.1s ease-out infinite; }
+
+  @keyframes widget-breathe {
+    0%, 100% { opacity: 0.12; transform: scale(1.02); }
+    50%      { opacity: 0.3;  transform: scale(1.14); }
+  }
+  @keyframes widget-pulse {
+    0%   { opacity: 0.45; transform: scale(1); }
+    100% { opacity: 0;    transform: scale(1.45); }
+  }
+
   .brand-mark-reveal { animation: mark-reveal 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .brand-pulse       { animation: accent-pulse 1600ms ease-in-out infinite; }
   .card-in           { animation: card-in 400ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
@@ -473,7 +494,7 @@
   .card-in:nth-child(4) { animation-delay: 240ms; }
 
   @media (prefers-reduced-motion: reduce) {
-    .brand-mark-reveal, .brand-pulse, .card-in {
+    .brand-mark-reveal, .brand-pulse, .card-in, .widget-ring-halo {
       animation: none !important;
     }
   }
