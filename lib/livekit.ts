@@ -105,9 +105,27 @@ export async function mintParticipantToken({
  */
 export async function countActiveCallRooms(): Promise<number> {
   const all = await rooms().listRooms();
-  return all.filter((room) =>
+  const count = all.filter((room) =>
     CALL_ROOM_PREFIXES.some((prefix) => room.name.startsWith(prefix)),
   ).length;
+  roomCountCache = { count, at: Date.now() };
+  return count;
+}
+
+let roomCountCache: { count: number; at: number } | null = null;
+
+/**
+ * The same count, reused for `maxAgeMs` -- for the widget's availability
+ * poll, where every waiting visitor asks every few seconds and the answer
+ * can't usefully change faster than a call starts or ends. Granting a
+ * session still uses the fresh count above, so the cache can only ever make
+ * a visitor poll once more, never let one past the cap.
+ */
+export async function countActiveCallRoomsCached(maxAgeMs: number): Promise<number> {
+  if (roomCountCache && Date.now() - roomCountCache.at <= maxAgeMs) {
+    return roomCountCache.count;
+  }
+  return countActiveCallRooms();
 }
 
 export type SipInboundTrunkSummary = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import "@livekit/components-styles";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { MediaDeviceFailure, Room, RoomEvent } from "livekit-client";
@@ -12,30 +12,31 @@ import {
   useAgentRoom,
   useElapsedSeconds,
 } from "@/components/agent-room";
-import type { ResolvedWidgetConfig } from "@/lib/widget-config";
+import { type ResolvedWidgetConfig, WIDGET_WAIT } from "@/lib/widget-config";
 
 const log = createTaggedLogger("codeora-widget");
 
 /**
  * What the visitor sees, from "nothing has happened" to "the call ended".
- * `requesting` is the session API round trip, `connecting` the LiveKit join
- * and the wait for the worker -- split because the failure modes differ.
+ * `requesting` is the session API round trip, `waiting` is being told every
+ * agent is busy and polling for a slot, `connecting` the LiveKit join and the
+ * wait for the worker -- split because the failure modes differ.
  */
-type Phase = "idle" | "requesting" | "connecting" | "live" | "ended" | "error";
+type Phase = "idle" | "requesting" | "waiting" | "connecting" | "live" | "ended" | "error";
 
 /** Reported to the host page so its launcher can show "In call". Coarser than
  * Phase on purpose: the launcher has room for one word. */
-type ReportedState = "idle" | "connecting" | "in_call" | "ended" | "error";
+type ReportedState = "idle" | "connecting" | "waiting" | "in_call" | "ended" | "error";
 
 type Session = { token: string; url: string; maxSeconds: number };
 
 /**
  * Slugs from app/api/widget/session/route.ts, in the visitor's terms. Written
  * for someone on a customer's website who has never heard of this platform --
- * no "dispatch", no "agent name", nothing to check in a console.
+ * no "dispatch", no "agent name", nothing to check in a console. `busy` has no
+ * entry: it isn't an error here, it starts the wait.
  */
 const ERROR_MESSAGES: Record<string, string> = {
-  busy: "All agents are busy, please try again shortly.",
   rate_limited: "Too many calls from your connection. Please try again in a few minutes.",
   daily_cap: "This assistant has reached its call limit for today. Please try again tomorrow.",
   origin_not_allowed: "This voice assistant isn't enabled for this website.",
@@ -46,6 +47,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   dispatch_failed: "We couldn't start the call. Please try again.",
   network: "Couldn't reach the server. Check your connection and try again.",
 };
+
+const WAITING_MESSAGE =
+  "All agents are busy right now. You're next in line — we'll connect you automatically.";
+const GAVE_UP_MESSAGE = "Still busy — please try again in a few minutes.";
 
 const MIC_MESSAGES: Record<MediaDeviceFailure, string> = {
   [MediaDeviceFailure.PermissionDenied]:
@@ -173,6 +178,9 @@ export function WidgetUnavailable() {
 /* Widget                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/** What one attempt at the session API came back with. */
+type SessionAttempt = { kind: "granted"; session: Session } | { kind: "busy" } | { kind: "failed" };
+
 export function VoiceWidget({
   widgetKey,
   agentName,
@@ -219,6 +227,67 @@ export function VoiceWidget({
     [report],
   );
 
+  /**
+   * One round trip to the session API. Shared by the first click and by
+   * every retry from the waiting phase; what happens next depends on the
+   * answer, and the caller decides that. Busy is not a failure here.
+   */
+  const requestSession = useCallback(async (): Promise<SessionAttempt> => {
+    const origin = embeddingOrigin();
+    log("requesting a session", { widgetKey, origin });
+    let response: Response;
+    try {
+      response = await fetch(`/api/widget/session?key=${encodeURIComponent(widgetKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: widgetKey, origin, visitor_id: visitorId() }),
+      });
+    } catch {
+      fail(ERROR_MESSAGES.network);
+      return { kind: "failed" };
+    }
+
+    if (response.status === 503) {
+      let slug = "";
+      try {
+        slug = ((await response.json()) as { error?: string }).error ?? "";
+      } catch {
+        // No body: treated as busy below, the only 503 the route sends once
+        // the key has been accepted.
+      }
+      if (slug === "busy" || slug === "") {
+        log("all agents busy");
+        return { kind: "busy" };
+      }
+      fail(ERROR_MESSAGES[slug] ?? ERROR_MESSAGES.dispatch_failed);
+      return { kind: "failed" };
+    }
+
+    if (!response.ok) {
+      let slug = "dispatch_failed";
+      try {
+        slug = ((await response.json()) as { error?: string }).error ?? slug;
+      } catch {
+        // No body -- the generic message is right.
+      }
+      log(`session refused: ${response.status} ${slug}`);
+      fail(ERROR_MESSAGES[slug] ?? ERROR_MESSAGES.dispatch_failed);
+      return { kind: "failed" };
+    }
+
+    const granted = (await response.json()) as Session;
+    log("session granted — connecting", { livekit: granted.url, maxSeconds: granted.maxSeconds });
+    setSession(granted);
+    setPhase("connecting");
+    report("connecting");
+    return { kind: "granted", session: granted };
+  }, [widgetKey, report, fail]);
+
+  const startWaiting = useCallback(() => {
+    setPhase("waiting");
+    report("waiting");
+  }, [report]);
+
   const start = useCallback(async () => {
     setError(null);
     setEndedReason(null);
@@ -241,7 +310,8 @@ export function VoiceWidget({
     // Ask for the microphone before dispatching a worker: a denied prompt is
     // the most common way a first call fails, and it should cost a dispatch
     // nobody can talk to. The probe stream is released straight away; LiveKit
-    // acquires its own once connected, with permission already granted.
+    // acquires its own once connected, with permission already granted -- and
+    // still granted after a wait, so a visitor who queued isn't asked twice.
     if (!navigator.mediaDevices?.getUserMedia) {
       fail("This browser doesn't support voice calls. Try current Chrome, Safari, Edge or Firefox.");
       return;
@@ -255,37 +325,9 @@ export function VoiceWidget({
       return;
     }
 
-    const origin = embeddingOrigin();
-    log("requesting a session", { widgetKey, origin });
-    let response: Response;
-    try {
-      response = await fetch(`/api/widget/session?key=${encodeURIComponent(widgetKey)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: widgetKey, origin, visitor_id: visitorId() }),
-      });
-    } catch {
-      fail(ERROR_MESSAGES.network);
-      return;
-    }
-
-    if (!response.ok) {
-      let slug = "dispatch_failed";
-      try {
-        slug = ((await response.json()) as { error?: string }).error ?? slug;
-      } catch {
-        // No body -- the generic message is right.
-      }
-      log(`session refused: ${response.status} ${slug}`);
-      fail(ERROR_MESSAGES[slug] ?? ERROR_MESSAGES.dispatch_failed);
-      return;
-    }
-
-    const next = (await response.json()) as Session;
-    log("session granted — connecting", { livekit: next.url, maxSeconds: next.maxSeconds });
-    setSession(next);
-    setPhase("connecting");
-  }, [widgetKey, room, report, fail]);
+    const attempt = await requestSession();
+    if (attempt.kind === "busy") startWaiting();
+  }, [room, report, fail, requestSession, startWaiting]);
 
   const endCall = useCallback(
     (reason: string | null) => {
@@ -296,6 +338,17 @@ export function VoiceWidget({
     },
     [report],
   );
+
+  const cancelWaiting = useCallback(() => {
+    log("visitor cancelled the wait");
+    setPhase("idle");
+    report("idle");
+  }, [report]);
+
+  const giveUpWaiting = useCallback(() => {
+    log(`gave up waiting after ${WIDGET_WAIT.giveUpMs / 1000}s`);
+    fail(GAVE_UP_MESSAGE);
+  }, [fail]);
 
   const close = useCallback(() => postToHost({ event: "close" }), []);
 
@@ -340,6 +393,21 @@ export function VoiceWidget({
     );
   }
 
+  if (phase === "waiting") {
+    return (
+      <Shell accentColor={config.accentColor} onClose={framed ? close : undefined}>
+        <Waiting
+          widgetKey={widgetKey}
+          agentName={agentName}
+          accentColor={config.accentColor}
+          requestSession={requestSession}
+          onCancel={cancelWaiting}
+          onGiveUp={giveUpWaiting}
+        />
+      </Shell>
+    );
+  }
+
   return (
     <Shell accentColor={config.accentColor} onClose={framed ? close : undefined}>
       <Ring accentColor={config.accentColor} mode={phase === "requesting" ? "connecting" : "idle"}>
@@ -359,7 +427,7 @@ export function VoiceWidget({
         ) : phase === "requesting" ? (
           <p className="text-sm text-n-600">Connecting…</p>
         ) : (
-          <p className="mx-auto max-w-xs text-sm leading-relaxed text-n-600">{config.greeting}</p>
+          <p className="mx-auto max-w-xs text-sm leading-relaxed text-n-600">{config.introText}</p>
         )}
       </div>
 
@@ -378,10 +446,123 @@ export function VoiceWidget({
 }
 
 /* -------------------------------------------------------------------------- */
+/* Waiting for a free agent                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Mounted for exactly as long as the visitor is in line, so its lifetime is
+ * the wait: the poll loop starts on mount, stops on unmount, and the timer
+ * that gives up is the same elapsed counter the visitor is watching.
+ *
+ * Each tick asks the availability endpoint; a "yes" is only a hint, so the
+ * session request is made straight away and may still come back busy when
+ * another visitor took the slot first -- then the loop simply carries on.
+ */
+function Waiting({
+  widgetKey,
+  agentName,
+  accentColor,
+  requestSession,
+  onCancel,
+  onGiveUp,
+}: {
+  widgetKey: string;
+  agentName: string;
+  accentColor: string;
+  requestSession: () => Promise<SessionAttempt>;
+  onCancel: () => void;
+  onGiveUp: () => void;
+}) {
+  const elapsed = useElapsedSeconds();
+
+  useEffect(() => {
+    if (elapsed * 1000 >= WIDGET_WAIT.giveUpMs) onGiveUp();
+  }, [elapsed, onGiveUp]);
+
+  // The latest callbacks, read by the loop without restarting it: `requestSession`
+  // is recreated whenever its own dependencies change, and a restarted loop
+  // would reset the jittered schedule for no reason.
+  const latest = useRef({ requestSession });
+  useEffect(() => {
+    latest.current = { requestSession };
+  }, [requestSession]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const schedule = () => {
+      const jitter = (Math.random() * 2 - 1) * WIDGET_WAIT.jitterMs;
+      timer = setTimeout(() => void tick(), WIDGET_WAIT.pollMs + jitter);
+    };
+
+    const tick = async () => {
+      if (cancelled) return;
+      let available = false;
+      try {
+        const response = await fetch(
+          `/api/widget/availability?key=${encodeURIComponent(widgetKey)}`,
+          { cache: "no-store" },
+        );
+        if (response.ok) {
+          available = ((await response.json()) as { available?: boolean }).available === true;
+        }
+      } catch {
+        // A failed poll is just a poll; the next one may succeed.
+      }
+      if (cancelled) return;
+      if (available) {
+        log("a slot opened — requesting a session");
+        const attempt = await latest.current.requestSession();
+        // Granted or failed, the phase has moved on and this unmounts. Busy
+        // means someone else got there first: keep waiting.
+        if (cancelled || attempt.kind !== "busy") return;
+        log("slot taken by someone else — still waiting");
+      }
+      schedule();
+    };
+
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [widgetKey]);
+
+  return (
+    <>
+      <Ring accentColor={accentColor} mode="waiting">
+        <MicIcon className="h-8 w-8" />
+      </Ring>
+
+      <div className="space-y-1.5">
+        <p className="font-semibold text-n-900">{agentName}</p>
+        <p className="mx-auto max-w-xs text-sm leading-relaxed text-n-600" aria-live="polite">
+          {WAITING_MESSAGE}
+        </p>
+        <p className="font-mono text-xs text-n-400 tabular-nums">
+          Waiting {formatElapsed(elapsed)}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onCancel}
+        className="inline-flex h-11 min-w-32 items-center justify-center rounded-full border border-n-200 bg-white px-6 text-sm font-semibold text-n-700 transition-colors hover:bg-n-100"
+      >
+        Cancel
+      </button>
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* In the call                                                                */
 /* -------------------------------------------------------------------------- */
 
-const RING_MODE: Record<string, "idle" | "connecting" | "listening" | "thinking" | "speaking"> = {
+type RingMode = "idle" | "connecting" | "waiting" | "listening" | "thinking" | "speaking";
+
+const RING_MODE: Record<string, RingMode> = {
   connecting: "connecting",
   initializing: "connecting",
   disconnected: "connecting",
@@ -521,8 +702,9 @@ function AudioBlocked({ room, accentColor }: { room: Room; accentColor: string }
 
 /**
  * The one visual that carries state: a disc in the accent colour whose halo
- * pulses while the agent speaks, breathes while it listens and holds still
- * while it thinks. Keyframes live in globals.css (`.widget-ring-*`).
+ * pulses while the agent speaks, breathes while it listens (and while the
+ * visitor waits in line) and holds still while it thinks. Keyframes live in
+ * globals.css (`.widget-ring-*`).
  */
 function Ring({
   accentColor,
@@ -530,7 +712,7 @@ function Ring({
   children,
 }: {
   accentColor: string;
-  mode: "idle" | "connecting" | "listening" | "thinking" | "speaking";
+  mode: RingMode;
   children: React.ReactNode;
 }) {
   return (

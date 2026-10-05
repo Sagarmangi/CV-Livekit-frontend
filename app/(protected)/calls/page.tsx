@@ -25,6 +25,7 @@ import {
   CALL_CHANNELS,
   CALL_OUTCOMES,
   callChannel,
+  widgetOrigin,
   type CallChannel,
   type CallOutcome,
 } from "@/lib/types";
@@ -164,7 +165,7 @@ export default async function CallsPage({
                         stay clickable on top of it needs `relative z-10`. */}
                     <Link
                       href={`/calls/${call.call_log_id}`}
-                      aria-label={`Open call from ${call.caller_number ?? "unknown caller"}`}
+                      aria-label={`Open call from ${widgetOrigin(call) ?? call.caller_number ?? "unknown caller"}`}
                       className="absolute inset-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand"
                     />
                     <Timestamp value={call.created_at} />
@@ -174,9 +175,15 @@ export default async function CallsPage({
                   </Td>
                   <Td>
                     {/* A widget visitor has no number; the worker records the
-                        site they called from in caller_number instead. */}
+                        site they called from in channel_metadata instead. */}
                     {callChannel(call) === "test" ? (
                       <span className="text-faint">browser test</span>
+                    ) : callChannel(call) === "widget" ? (
+                      widgetOrigin(call) ? (
+                        <Mono>{widgetOrigin(call)}</Mono>
+                      ) : (
+                        <span className="text-faint">unknown site</span>
+                      )
                     ) : call.caller_number ? (
                       <Mono>{call.caller_number}</Mono>
                     ) : (

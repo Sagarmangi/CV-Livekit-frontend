@@ -21,7 +21,7 @@
   if (!script) return;
 
   var key = script.getAttribute("data-key");
-  if (!key || !/^wk_[A-Za-z0-9_-]{16,64}$/.test(key)) {
+  if (!key || !/^wk_[A-Za-z0-9_-]{24}$/.test(key)) {
     console.warn("[codeora-widget] data-key is missing or not a widget key");
     return;
   }
@@ -89,11 +89,20 @@
 
   // Idle shows the optional label; a live call shows that it is live, even
   // with the panel closed -- otherwise a visitor who collapsed it mid-call has
-  // no sign the microphone is still on.
+  // no sign the microphone is still on. "Waiting…" likewise: the widget keeps
+  // polling for a free agent while collapsed and will connect on its own.
   function render() {
     root.setAttribute("data-state", state);
     text.textContent =
-      state === "in_call" ? "In call" : state === "connecting" ? "Connecting…" : open ? "" : label;
+      state === "in_call"
+        ? "In call"
+        : state === "waiting"
+          ? "Waiting…"
+          : state === "connecting"
+            ? "Connecting…"
+            : open
+              ? ""
+              : label;
     button.setAttribute("aria-expanded", open ? "true" : "false");
     button.setAttribute("aria-label", open ? "Close voice assistant" : "Open voice assistant");
     if (open) root.setAttribute("data-open", "");

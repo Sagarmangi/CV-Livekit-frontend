@@ -88,7 +88,11 @@ export type WidgetConfig = {
   accent_color?: string;
   /** Idle-state button text. */
   button_label?: string;
-  /** Text shown above the button before a call starts. */
+  /** Written text shown above the button before a call starts. Page copy
+   * only -- the worker never sees it. */
+  intro_text?: string;
+  /** The *spoken* opening line on widget calls. The worker says this instead
+   * of the agent's normal first message; empty means use the normal one. */
   greeting?: string;
 };
 
@@ -218,8 +222,9 @@ export type Agent = {
 
   /** Off by default. While off, the session API refuses every request. */
   widget_enabled: boolean;
-  /** `wk_…` public identifier the embed snippet carries. Null until generated. */
-  widget_key: string | null;
+  /** `wk_` + 24 base64url characters, the public identifier the embed snippet
+   * carries. NOT NULL: the migration issues one to every agent. */
+  widget_key: string;
   /** Exact origins (scheme + host [+ port], no path) allowed to embed. An
    * empty list means nobody -- a widget is off until a domain is added. */
   widget_allowed_origins: string[];
@@ -340,11 +345,14 @@ export type CallLog = {
   is_test: boolean;
   /**
    * Which surface the call came in on. Supersedes `is_test` (kept for rows
-   * written before the column existed -- see `callChannel()`). For "widget"
-   * rows the worker records the embedding site's origin in `caller_number`,
-   * since a browser visitor has no phone number.
+   * written before the column existed -- see `callChannel()`). A widget
+   * visitor has no phone number: their site is in `channel_metadata`.
    */
   channel: CallChannel | null;
+  /** Per-channel facts with no column of their own. For "widget" rows the
+   * worker records which site the visitor was on and the visitor id the
+   * widget sent in the dispatch metadata. Null for phone and test calls. */
+  channel_metadata: ChannelMetadata | null;
   /**
    * What the call cost, split by the thing that charges for it, frozen at the
    * rates in effect when it ended (see agent-worker/src/worker/pricing.py).
@@ -423,6 +431,18 @@ export type CallLog = {
   analysis_model: string | null;
   created_at: string;
 };
+
+export type ChannelMetadata = {
+  origin?: string;
+  visitor_id?: string;
+};
+
+/** The embedding site of a widget call, or null for anything else. */
+export function widgetOrigin(
+  call: Pick<CallLog, "channel" | "is_test" | "channel_metadata">,
+): string | null {
+  return callChannel(call) === "widget" ? (call.channel_metadata?.origin ?? null) : null;
+}
 
 /** Mirrors the check constraint on `call_logs.channel` -- keep in step with the worker. */
 export const CALL_CHANNELS = ["phone", "test", "widget"] as const;

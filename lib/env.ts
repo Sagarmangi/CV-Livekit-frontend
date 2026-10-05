@@ -75,7 +75,7 @@ export function widgetEnv() {
     /** Widget calls one agent may take per UTC day, counted from call_logs. */
     dailyCap: positiveInt(process.env.WIDGET_DAILY_CAP, 200),
     /** Live rooms (phone, test and widget together) before the widget says "busy". */
-    maxConcurrentCalls: positiveInt(process.env.MAX_CONCURRENT_CALLS, 2),
+    maxConcurrentCalls: positiveInt(process.env.MAX_CONCURRENT_CALLS, 3),
   };
 }
 

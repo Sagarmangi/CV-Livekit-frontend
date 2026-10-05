@@ -13,12 +13,13 @@ import {
 } from "@/lib/livekit";
 import { countWidgetCallsToday, getAgentByWidgetKey } from "@/lib/queries";
 import type { Agent } from "@/lib/types";
-import { normalizeOrigin, WIDGET_KEY_PATTERN, WIDGET_MAX_SECONDS } from "@/lib/widget-config";
+import { type Cors, json, preflight } from "@/lib/widget-api";
+import { normalizeOrigin, WIDGET_KEY_PATTERN, WIDGET_MAX_SECONDS, WIDGET_WAIT } from "@/lib/widget-config";
 
 /**
- * The one unauthenticated endpoint in the app: hands a browser visitor a
- * LiveKit token for a room the worker has been dispatched into. Called by the
- * widget page (app/widget/[key]) from inside a customer's iframe.
+ * The one unauthenticated endpoint that costs money: hands a browser visitor
+ * a LiveKit token for a room the worker has been dispatched into. Called by
+ * the widget page (app/widget/[key]) from inside a customer's iframe.
  *
  * Everything here is a gate, in order of cost: the key and the agent's own
  * switches (one Supabase read), the embedding origin, the per-IP window (in
@@ -29,8 +30,9 @@ import { normalizeOrigin, WIDGET_KEY_PATTERN, WIDGET_MAX_SECONDS } from "@/lib/w
  * slugs are part of its contract -- see ERROR_MESSAGES in voice-widget.tsx.
  */
 
-/** Sessions one IP may start inside the window. Generous for a person
- * retrying a dropped call, tight for a script. */
+/** Sessions one IP may *start* inside the window. Generous for a person
+ * retrying a dropped call, tight for a script. Only granted sessions count:
+ * a visitor told "busy" five times while waiting has started nothing. */
 const IP_WINDOW_MS = 10 * 60_000;
 const IP_LIMIT = 5;
 
@@ -44,7 +46,7 @@ const IP_LIMIT = 5;
 const sessionStartsByIp = new Map<string, number[]>();
 const IP_MAP_SWEEP_AT = 5_000;
 
-function ipRateLimited(ip: string): boolean {
+function recentStarts(ip: string): number[] {
   const now = Date.now();
   if (sessionStartsByIp.size > IP_MAP_SWEEP_AT) {
     for (const [key, starts] of sessionStartsByIp) {
@@ -52,13 +54,17 @@ function ipRateLimited(ip: string): boolean {
     }
   }
   const recent = (sessionStartsByIp.get(ip) ?? []).filter((at) => now - at <= IP_WINDOW_MS);
-  if (recent.length >= IP_LIMIT) {
-    sessionStartsByIp.set(ip, recent);
-    return true;
-  }
-  recent.push(now);
   sessionStartsByIp.set(ip, recent);
-  return false;
+  return recent;
+}
+
+function ipAtLimit(ip: string): boolean {
+  return recentStarts(ip).length >= IP_LIMIT;
+}
+
+/** Called only once a dispatch has actually been created. */
+function recordSessionStart(ip: string): void {
+  recentStarts(ip).push(Date.now());
 }
 
 function clientIp(request: NextRequest): string {
@@ -68,26 +74,6 @@ function clientIp(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
   return request.headers.get("x-real-ip") ?? "unknown";
-}
-
-/* -------------------------------------------------------------------------- */
-/* Responses                                                                  */
-/* -------------------------------------------------------------------------- */
-
-type Cors = { allowOrigin: string | null };
-
-function json(status: number, body: unknown, cors: Cors = { allowOrigin: null }): Response {
-  const headers = new Headers({
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store",
-    Vary: "Origin",
-  });
-  if (cors.allowOrigin) {
-    headers.set("Access-Control-Allow-Origin", cors.allowOrigin);
-    headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    headers.set("Access-Control-Allow-Headers", "Content-Type");
-  }
-  return new Response(JSON.stringify(body), { status, headers });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -195,7 +181,7 @@ export async function POST(request: NextRequest) {
   const cors: Cors = { allowOrigin: request.headers.get("origin") };
 
   const ip = clientIp(request);
-  if (ipRateLimited(ip)) {
+  if (ipAtLimit(ip)) {
     console.info(`[codeora-widget] refused key=${key} ip=${ip}: per-IP limit`);
     return json(429, { error: "rate_limited" }, cors);
   }
@@ -207,6 +193,8 @@ export async function POST(request: NextRequest) {
     return json(429, { error: "daily_cap" }, cors);
   }
 
+  // Always a fresh count here, never the availability route's cached one:
+  // this is the decision that spends a worker slot.
   let active: number;
   try {
     active = await countActiveCallRooms();
@@ -216,7 +204,9 @@ export async function POST(request: NextRequest) {
   }
   if (active >= maxConcurrentCalls) {
     console.info(`[codeora-widget] busy key=${key}: ${active} live rooms, cap ${maxConcurrentCalls}`);
-    return json(503, { error: "busy" }, cors);
+    return json(503, { error: "busy" }, cors, {
+      "Retry-After": String(WIDGET_WAIT.retryAfterSeconds),
+    });
   }
 
   const visitorId =
@@ -233,6 +223,7 @@ export async function POST(request: NextRequest) {
       origin: embedder.origin,
       visitor_id: visitorId,
     });
+    recordSessionStart(ip);
     const { url } = livekitEnv();
     console.info(
       `[codeora-widget] dispatch created room=${roomName} agent=${WORKER_AGENT_NAME} ` +
@@ -256,34 +247,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Preflight for a site calling the API directly. The browser sends no body
- * with a preflight, so the key has to come in the query string
- * (`POST /api/widget/session?key=wk_…`) for the origin to be checked here.
- * Anything not allowlisted gets a 204 with no CORS headers, which the browser
- * treats as a refusal.
- */
+/** Preflight for a site calling the API directly -- key in the query string,
+ * since a preflight has no body. See `preflight()`. */
 export async function OPTIONS(request: NextRequest) {
-  const headers = new Headers({
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Max-Age": "600",
-    Vary: "Origin",
-  });
-
-  const origin = request.headers.get("origin");
   const key = request.nextUrl.searchParams.get("key");
-  if (origin && key && WIDGET_KEY_PATTERN.test(key) && integrationStatus().supabase) {
-    const agent = await getAgentByWidgetKey(key);
-    const normalized = normalizeOrigin(origin);
-    if (
-      agent?.widget_enabled &&
-      normalized &&
-      agent.widget_allowed_origins.some((o) => o.toLowerCase() === normalized)
-    ) {
-      headers.set("Access-Control-Allow-Origin", origin);
-    }
-  }
-
-  return new Response(null, { status: 204, headers });
+  const agent =
+    key && WIDGET_KEY_PATTERN.test(key) && integrationStatus().supabase
+      ? await getAgentByWidgetKey(key)
+      : null;
+  return preflight(agent, request.headers.get("origin"));
 }

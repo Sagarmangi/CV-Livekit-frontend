@@ -20,7 +20,7 @@ import {
   Timestamp,
 } from "@/components/ui";
 import { getAgent, getCallLog } from "@/lib/queries";
-import { callChannel, ENDED_BY_LABELS } from "@/lib/types";
+import { callChannel, ENDED_BY_LABELS, widgetOrigin } from "@/lib/types";
 
 const COMPONENT_LABELS: Record<string, string> = {
   stt: "Speech-to-text",
@@ -81,10 +81,24 @@ export default async function CallDetailPage({
             <ChannelBadge channel={channel} />
           </Detail>
           {/* A widget visitor has no number; the worker records the site they
-              called from in caller_number instead, so the label follows. */}
+              called from (and the widget's visitor id) in channel_metadata, so
+              the label follows. */}
           <Detail label={channel === "widget" ? "Visitor's site" : "Caller"}>
             {channel === "test" ? (
               <span className="text-faint">no phone number — browser test</span>
+            ) : channel === "widget" ? (
+              <span className="flex flex-col gap-0.5">
+                {widgetOrigin(call) ? (
+                  <Mono>{widgetOrigin(call)}</Mono>
+                ) : (
+                  <span className="text-faint">unknown site</span>
+                )}
+                {call.channel_metadata?.visitor_id && (
+                  <span className="font-mono text-xs break-all text-faint">
+                    visitor {call.channel_metadata.visitor_id}
+                  </span>
+                )}
+              </span>
             ) : call.caller_number ? (
               <Mono>{call.caller_number}</Mono>
             ) : (

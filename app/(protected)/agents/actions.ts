@@ -408,8 +408,9 @@ export async function updateAgentKnowledgeBase(
 /* Web widget                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** `wk_` + 24 URL-safe characters (18 random bytes). Public, so it only has
- * to be unguessable enough that nobody can enumerate agents by it. */
+/** `wk_` + exactly 24 base64url characters (18 bytes encode to 24 with no
+ * padding), matching the column's check constraint. Public, so it only has to
+ * be unguessable enough that nobody can enumerate agents by it. */
 function generateWidgetKey(): string {
   return `wk_${randomBytes(18).toString("base64url")}`;
 }
@@ -448,9 +449,14 @@ export async function updateAgentWidget(
       return fail(`Button label must be ${WIDGET_LIMITS.buttonLabel} characters or fewer.`);
     }
 
+    const introText = optionalStr(form, "widget_intro_text");
+    if (introText && introText.length > WIDGET_LIMITS.introText) {
+      return fail(`Intro text must be ${WIDGET_LIMITS.introText} characters or fewer.`);
+    }
+
     const greeting = optionalStr(form, "widget_greeting");
     if (greeting && greeting.length > WIDGET_LIMITS.greeting) {
-      return fail(`Greeting must be ${WIDGET_LIMITS.greeting} characters or fewer.`);
+      return fail(`Spoken greeting must be ${WIDGET_LIMITS.greeting} characters or fewer.`);
     }
 
     const maxSeconds = num(form, "widget_max_seconds") ?? WIDGET_MAX_SECONDS.fallback;
@@ -469,18 +475,9 @@ export async function updateAgentWidget(
     const config: WidgetConfig = {
       ...(accent ? { accent_color: accent.toUpperCase() } : {}),
       ...(buttonLabel ? { button_label: buttonLabel } : {}),
+      ...(introText ? { intro_text: introText } : {}),
       ...(greeting ? { greeting } : {}),
     };
-
-    // Enabling the widget is the moment a key is first needed -- issue one
-    // here so the embed panel has something to show without a second click.
-    const { data: current, error: fetchError } = await db()
-      .from("agents")
-      .select("widget_key")
-      .eq("agent_id", agentId)
-      .maybeSingle();
-    if (fetchError) return fail(fetchError.message);
-    const widgetKey = current?.widget_key ?? (enabled ? generateWidgetKey() : null);
 
     const { error } = await db()
       .from("agents")
@@ -489,7 +486,6 @@ export async function updateAgentWidget(
         widget_allowed_origins: origins,
         widget_config: config,
         widget_max_seconds: maxSeconds,
-        ...(widgetKey && widgetKey !== current?.widget_key ? { widget_key: widgetKey } : {}),
       })
       .eq("agent_id", agentId);
 
@@ -505,10 +501,10 @@ export async function updateAgentWidget(
 }
 
 /**
- * Also the "Generate key" action for an agent that has none yet -- the same
- * write either way. Regenerating is the only way to revoke access: the key is
- * in the page source of every site that embeds it, and the allowlist can't
- * help against a site that is on it.
+ * Every agent has a key from the migration onward, so this only ever replaces
+ * one. Regenerating is the only way to revoke access: the key is in the page
+ * source of every site that embeds it, and the allowlist can't help against a
+ * site that is on it.
  */
 export async function regenerateWidgetKey(
   _prev: ActionState,

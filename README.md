@@ -27,7 +27,7 @@ Fill in `.env.local`. Every value is server-only, and each is documented in
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio console credentials |
 | `TWILIO_SIP_TRUNK_SID` | The one shared Elastic SIP Trunk (`TK…`) |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | The LiveKit server, same key pair as the backend |
-| `WIDGET_DAILY_CAP`, `MAX_CONCURRENT_CALLS` | Optional limits on the public web widget (defaults 200/day and 2 live calls) |
+| `WIDGET_DAILY_CAP`, `MAX_CONCURRENT_CALLS` | Optional limits on the public web widget (defaults 200/day and 3 live calls) |
 
 There is no public sign-up. To give someone access, create them in Supabase
 Auth and add them to the `allowed_users` table.

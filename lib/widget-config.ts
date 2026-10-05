@@ -6,10 +6,9 @@
 
 import type { WidgetConfig } from "@/lib/types";
 
-/** `wk_` plus 16-64 URL-safe characters. The actions issue 24 (base64url of
- * 18 random bytes); the range leaves room to change that without breaking
- * keys already embedded on customers' pages. */
-export const WIDGET_KEY_PATTERN = /^wk_[A-Za-z0-9_-]{16,64}$/;
+/** `wk_` plus exactly 24 base64url characters (18 random bytes) -- the same
+ * check constraint the `agents.widget_key` column enforces. */
+export const WIDGET_KEY_PATTERN = /^wk_[A-Za-z0-9_-]{24}$/;
 
 export const WIDGET_MAX_SECONDS = {
   min: 30,
@@ -20,7 +19,19 @@ export const WIDGET_MAX_SECONDS = {
 
 export const WIDGET_LIMITS = {
   buttonLabel: 40,
+  introText: 300,
   greeting: 300,
+} as const;
+
+/** How the widget waits for a free slot when every worker is busy: poll the
+ * availability endpoint this often (plus up to ±1s jitter so a page full of
+ * waiting visitors doesn't poll in lockstep), and stop after this long. */
+export const WIDGET_WAIT = {
+  pollMs: 4_000,
+  jitterMs: 1_000,
+  giveUpMs: 3 * 60_000,
+  /** What the busy responses advertise in Retry-After / retryAfterSeconds. */
+  retryAfterSeconds: 5,
 } as const;
 
 /** The dashboard's brand blue -- what a widget looks like before anyone
@@ -29,10 +40,12 @@ export const WIDGET_DEFAULT_ACCENT = "#043FFF";
 
 export const WIDGET_DEFAULT_BUTTON_LABEL = "Start call";
 
+/** What the widget page needs. The spoken greeting isn't here: the worker
+ * reads that from the agent row itself when the call starts. */
 export type ResolvedWidgetConfig = {
   accentColor: string;
   buttonLabel: string;
-  greeting: string;
+  introText: string;
 };
 
 export function resolveWidgetConfig(
@@ -42,8 +55,12 @@ export function resolveWidgetConfig(
   return {
     accentColor: isHexColor(config?.accent_color) ? config.accent_color : WIDGET_DEFAULT_ACCENT,
     buttonLabel: config?.button_label?.trim() || WIDGET_DEFAULT_BUTTON_LABEL,
-    greeting: config?.greeting?.trim() || `Hi! Tap the button to talk to ${agentName}.`,
+    introText: config?.intro_text?.trim() || defaultIntroText(agentName),
   };
+}
+
+export function defaultIntroText(agentName: string): string {
+  return `Hi! Tap the button to talk to ${agentName}.`;
 }
 
 export function isHexColor(value: unknown): value is string {

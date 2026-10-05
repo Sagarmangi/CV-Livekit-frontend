@@ -42,13 +42,12 @@ export function WidgetEmbedPanel({
   // without a full page refresh.
   const [previewNonce, setPreviewNonce] = useState(0);
 
+  // The column is NOT NULL and the migration issued a key to every agent, so
+  // this is defensive only -- a row that somehow lost its key can get one back.
   if (!widgetKey) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted">
-          This agent has no widget key yet. One is issued automatically the first time
-          the widget is enabled and saved above -- or generate it now.
-        </p>
+        <p className="text-sm text-muted">This agent has no widget key. Issue one to embed it.</p>
         <ActionButton
           action={regenerateWidgetKey}
           label="Generate key"

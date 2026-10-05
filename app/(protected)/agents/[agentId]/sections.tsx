@@ -36,6 +36,7 @@ import {
   LLM_PROVIDERS,
 } from "@/lib/types";
 import {
+  defaultIntroText,
   WIDGET_DEFAULT_ACCENT,
   WIDGET_DEFAULT_BUTTON_LABEL,
   WIDGET_LIMITS,
@@ -672,10 +673,28 @@ export function WidgetConfigForm({ agent }: { agent: Agent }) {
           </Field>
         </div>
         <Field
-          label="Greeting"
+          label="Intro text"
+          htmlFor="widget-intro-text"
+          badge="optional"
+          hint={`Written text shown above the button before a call starts. Page copy only -- the agent never sees or says it. Up to ${WIDGET_LIMITS.introText} characters.`}
+        >
+          <Textarea
+            id="widget-intro-text"
+            name="widget_intro_text"
+            rows={2}
+            maxLength={WIDGET_LIMITS.introText}
+            defaultValue={agent.widget_config.intro_text ?? ""}
+            placeholder={defaultIntroText(agent.name)}
+          />
+        </Field>
+      </FieldSet>
+
+      <FieldSet legend="Opening line">
+        <Field
+          label="Spoken greeting (widget only)"
           htmlFor="widget-greeting"
           badge="optional"
-          hint={`Shown above the button before a call starts -- written text on the page, not what the agent says. Up to ${WIDGET_LIMITS.greeting} characters.`}
+          hint={`What the agent SAYS when a widget call connects, in place of its normal opening from the Prompt & qualification tab -- a website visitor usually wants a different welcome from a phone caller. Leave blank to use the normal opening. Phone calls never use this. Up to ${WIDGET_LIMITS.greeting} characters.`}
         >
           <Textarea
             id="widget-greeting"
@@ -683,7 +702,7 @@ export function WidgetConfigForm({ agent }: { agent: Agent }) {
             rows={2}
             maxLength={WIDGET_LIMITS.greeting}
             defaultValue={agent.widget_config.greeting ?? ""}
-            placeholder={`Hi! Tap the button to talk to ${agent.name}.`}
+            placeholder={`Hi, thanks for visiting our site -- I'm ${agent.name}. How can I help?`}
           />
         </Field>
       </FieldSet>

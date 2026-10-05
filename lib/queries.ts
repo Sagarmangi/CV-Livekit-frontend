@@ -163,7 +163,7 @@ export async function listCallLogs(
     .select(
       "call_log_id, call_sid, room_id, agent_id, caller_number, recording_url, " +
         "duration_seconds, outcome, matched_department, spam_detection, lead_name, " +
-        "lead_company, lead_need, is_test, channel, created_at, " +
+        "lead_company, lead_need, is_test, channel, channel_metadata, created_at, " +
         // The four component costs but not cost_breakdown: the list shows a
         // single figure, and the per-line audit trail is only ever read on the
         // detail page. Same reasoning as leaving transcript out.
