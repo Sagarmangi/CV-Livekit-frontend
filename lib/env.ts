@@ -66,6 +66,24 @@ export function livekitEnv() {
 }
 
 /**
+ * Cloudinary, where the worker stores call recordings as authenticated
+ * assets. Optional -- the dashboard renders fine without it, it just can't
+ * sign playback URLs, so the recording section says so instead of playing.
+ * Null unless all three are set: a partial configuration can't sign either.
+ */
+export function cloudinaryEnv(): {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+} | null {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  if (!cloudName || !apiKey || !apiSecret) return null;
+  return { cloudName, apiKey, apiSecret };
+}
+
+/**
  * Limits on the public web widget. Both optional: the defaults are deliberately
  * tight, because this is the one surface anyone on the internet can start a
  * (metered, paid-for) call through without signing in.

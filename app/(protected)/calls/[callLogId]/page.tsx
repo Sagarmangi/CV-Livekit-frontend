@@ -20,6 +20,7 @@ import {
   Timestamp,
 } from "@/components/ui";
 import { getAgent, getCallLog } from "@/lib/queries";
+import { recordingLink } from "@/lib/recordings";
 import { callChannel, ENDED_BY_LABELS, widgetOrigin } from "@/lib/types";
 
 const COMPONENT_LABELS: Record<string, string> = {
@@ -64,6 +65,9 @@ export default async function CallDetailPage({
 
   const agent = call.agent_id ? await getAgent(call.agent_id) : null;
   const channel = callChannel(call);
+  // The stored URL is an authenticated Cloudinary asset and 401s as-is; this
+  // re-signs it server-side (see lib/recordings.ts).
+  const recording = call.recording_url ? recordingLink(call.recording_url) : null;
 
   return (
     <PageBody>
@@ -338,11 +342,27 @@ export default async function CallDetailPage({
         </Card>
       )}
 
-      {call.recording_url && (
+      {recording && (
         <Card title="Recording">
-          <audio controls src={call.recording_url} className="w-full">
-            <a href={call.recording_url}>Download the recording</a>
-          </audio>
+          {!recording.signed && (
+            <p className="mb-3 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-sm text-warning-text">
+              Recordings are stored as private Cloudinary assets, and playback needs
+              the Cloudinary keys to sign the link. Set{" "}
+              <Mono>CLOUDINARY_CLOUD_NAME</Mono>, <Mono>CLOUDINARY_API_KEY</Mono> and{" "}
+              <Mono>CLOUDINARY_API_SECRET</Mono> on the dashboard -- until then this
+              player will fail with a 401.
+            </p>
+          )}
+          <audio controls preload="metadata" src={recording.url} className="w-full" />
+          <p className="mt-3 text-sm">
+            <a
+              href={recording.url}
+              download
+              className="font-medium text-brand-text underline-offset-2 hover:underline"
+            >
+              Download the recording
+            </a>
+          </p>
         </Card>
       )}
 

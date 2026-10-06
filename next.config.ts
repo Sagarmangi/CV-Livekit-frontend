@@ -55,7 +55,7 @@ const nextConfig: NextConfig = {
      */
     optimizePackageImports: ["@livekit/components-react"],
   },
-  serverExternalPackages: ["twilio", "livekit-server-sdk", "@livekit/protocol"],
+  serverExternalPackages: ["twilio", "livekit-server-sdk", "@livekit/protocol", "cloudinary"],
 };
 
 export default nextConfig;

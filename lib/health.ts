@@ -1,6 +1,13 @@
 import "server-only";
 
-import { authEnv, livekitEnv, supabaseEnv, twilioEnv, voiceProviderEnv } from "@/lib/env";
+import {
+  authEnv,
+  cloudinaryEnv,
+  livekitEnv,
+  supabaseEnv,
+  twilioEnv,
+  voiceProviderEnv,
+} from "@/lib/env";
 import { describeSipConfig } from "@/lib/livekit";
 import { db } from "@/lib/supabase";
 import { describeSharedTrunk } from "@/lib/twilio";
@@ -185,6 +192,21 @@ async function checkSlack(webhookUrl: string | null): Promise<HealthCheck> {
   return { ...base, status: "ok", message: "Configured (not live-tested -- would post a real message)." };
 }
 
+async function checkCloudinary(): Promise<HealthCheck> {
+  const base = { name: "Cloudinary", usedFor: "call recording storage + playback" };
+  if (!cloudinaryEnv()) {
+    return {
+      ...base,
+      status: "not_configured",
+      message: "CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET not set -- recordings won't play.",
+    };
+  }
+  // Configuration-only, like Slack: the dashboard never uploads, it only signs
+  // delivery URLs, and signing is local arithmetic with no request to check.
+  // A wrong secret surfaces as a 401 on the recording itself.
+  return { ...base, status: "ok", message: "Configured (keys present; URL signing is local, not live-tested)." };
+}
+
 export async function checkAllIntegrations(): Promise<HealthCheck[]> {
   const voice = voiceProviderEnv();
 
@@ -198,6 +220,7 @@ export async function checkAllIntegrations(): Promise<HealthCheck[]> {
     checkDeepSeek(voice.deepseekApiKey, voice.deepseekBaseUrl),
     checkGemini(voice.geminiApiKey),
     checkSlack(voice.slackWebhookUrl),
+    checkCloudinary(),
   ]);
 
   return results.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
