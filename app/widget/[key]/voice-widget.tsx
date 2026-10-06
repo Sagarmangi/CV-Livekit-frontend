@@ -151,7 +151,8 @@ function Shell({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-3 right-3 rounded-full p-1.5 text-n-500 transition-colors hover:bg-n-100 hover:text-n-900"
+          // 36px hit area: this is tapped on phones, inside a small iframe.
+          className="absolute top-2 right-2 flex h-9 w-9 items-center justify-center rounded-full text-n-500 transition-colors hover:bg-n-100 hover:text-n-900"
         >
           <XIcon />
         </button>
@@ -159,7 +160,17 @@ function Shell({
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-10 text-center">
         {children}
       </div>
-      <p className="pb-3 text-center text-[0.6875rem] text-n-400">Powered by Codeora Vision</p>
+      <p className="pb-3 text-center text-[0.6875rem] text-n-400">
+        Powered by{" "}
+        <a
+          href="https://codeoravision.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline-offset-2 hover:text-n-600 hover:underline"
+        >
+          Codeora Vision
+        </a>
+      </p>
     </div>
   );
 }

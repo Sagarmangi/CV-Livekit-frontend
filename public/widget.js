@@ -1,13 +1,8 @@
 /*! Codeora Vision voice widget loader.
- *
  *   <script src="https://voice.codeoravision.com/widget.js" data-key="wk_…" async></script>
- *
- * Optional attributes: data-position="bottom-left" (default bottom-right),
- * data-color="#043fff" (overrides the agent's own accent), data-label="Talk to us".
- *
- * Renders a floating launcher; the first click inserts an iframe onto
- * /widget/<key> on the same host this script came from, so the one file
- * works on staging and production alike. No framework, no dependencies.
+ * Optional: data-position="bottom-left", data-color="#043fff", data-label="Talk to us".
+ * Renders a floating launcher; the first click frames /widget/<key> from this
+ * script's own host, so one file serves staging and production. No dependencies.
  */
 (function () {
   "use strict";
@@ -30,29 +25,46 @@
   var origin = new URL(script.src, location.href).origin;
   var side = script.getAttribute("data-position") === "bottom-left" ? "left" : "right";
   var fixedColor = script.getAttribute("data-color");
-  var label = script.getAttribute("data-label") || "";
+  var fixedLabel = script.getAttribute("data-label");
+  var label = fixedLabel || "";
+  var HEX = /^#[0-9a-fA-F]{6}$/;
 
   var css =
     ".cvw{position:fixed;bottom:20px;z-index:2147483000;display:flex;flex-direction:column;gap:12px;" +
-    "font:600 14px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--cvw-accent:#043fff}" +
+    "font:600 14px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--cvw-accent:#043fff;--cvw-size:56px}" +
     ".cvw[data-side=right]{right:20px;align-items:flex-end}.cvw[data-side=left]{left:20px;align-items:flex-start}" +
-    ".cvw-btn{position:relative;display:inline-flex;align-items:center;gap:8px;height:56px;min-width:56px;padding:0 16px;" +
-    "border:0;border-radius:999px;background:var(--cvw-accent);color:#fff;cursor:pointer;" +
-    "box-shadow:0 8px 24px rgba(0,0,0,.18);transition:transform .15s,box-shadow .15s}" +
+    /* Flex row, icon a fixed box: one centre line. No text, no padding: a circle. */
+    ".cvw-btn{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;gap:8px;" +
+    "box-sizing:border-box;height:var(--cvw-size);min-width:var(--cvw-size);padding:0;margin:0;border:0;border-radius:999px;" +
+    "background:var(--cvw-accent);color:#fff;cursor:pointer;font:inherit;line-height:1;white-space:nowrap;" +
+    "box-shadow:0 8px 24px rgba(0,0,0,.18);transition:transform .15s,box-shadow .15s,background-color .15s}" +
+    ".cvw-btn.cvw-has-text{padding:0 18px}" +
     ".cvw-btn:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(0,0,0,.22)}" +
-    ".cvw-btn:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px var(--cvw-accent)}" +
-    ".cvw-btn svg{width:22px;height:22px;flex:none}.cvw-btn .cvw-x{display:none}" +
-    ".cvw[data-open] .cvw-btn .cvw-mic{display:none}.cvw[data-open] .cvw-btn .cvw-x{display:block}" +
-    ".cvw-txt:empty{display:none}.cvw-btn:not(:has(.cvw-txt:not(:empty))){padding:0}" +
-    ".cvw[data-state=in_call] .cvw-btn::before{content:'';position:absolute;inset:-4px;border-radius:999px;" +
-    "border:2px solid var(--cvw-accent);animation:cvw-pulse 1.6s ease-out infinite}" +
+    ".cvw-btn:focus-visible{outline:3px solid var(--cvw-accent);outline-offset:3px}" +
+    ".cvw-btn svg{display:block;width:22px;height:22px;flex:none}" +
+    ".cvw-txt{display:block;padding-top:1px}.cvw-txt:empty{display:none}" +
+    ".cvw-btn .cvw-x{display:none}" +
+    /* Open: a neutral dark circle with an X, so "close" never looks like "call". */
+    ".cvw[data-open] .cvw-btn{background:#18181b;padding:0}" +
+    ".cvw[data-open] .cvw-btn:focus-visible{outline-color:#18181b}" +
+    ".cvw[data-open] .cvw-phone,.cvw[data-open] .cvw-txt,.cvw[data-open] .cvw-dot,.cvw[data-open] .cvw-btn::before{display:none}" +
+    ".cvw[data-open] .cvw-x{display:block}" +
+    /* In call: white dot in the pill, soft halo expanding from behind the button. */
+    ".cvw-dot{display:none;width:8px;height:8px;border-radius:50%;background:#fff;flex:none;animation:cvw-blink 1.2s ease-in-out infinite}" +
+    ".cvw[data-state=in_call] .cvw-dot{display:block}" +
+    ".cvw[data-state=in_call] .cvw-btn::before{content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;" +
+    "background:var(--cvw-accent);filter:blur(2px);animation:cvw-halo 1.6s ease-out infinite}" +
     ".cvw-panel{width:360px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 110px);" +
     "border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 24px 64px rgba(0,0,0,.24);" +
     "transform-origin:bottom;animation:cvw-in .18s ease-out}" +
     ".cvw-panel[hidden]{display:none}.cvw-panel iframe{display:block;width:100%;height:100%;border:0}" +
-    "@keyframes cvw-pulse{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.35);opacity:0}}" +
+    "@keyframes cvw-halo{0%{transform:scale(1);opacity:.4}100%{transform:scale(1.6);opacity:0}}" +
+    "@keyframes cvw-blink{0%,100%{opacity:1}50%{opacity:.35}}" +
     "@keyframes cvw-in{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}" +
-    "@media (prefers-reduced-motion:reduce){.cvw-btn,.cvw-panel{animation:none;transition:none}.cvw-btn::before{animation:none}}";
+    /* Phones: the panel takes the width, the launcher comes down a size. */
+    "@media (max-width:479px){.cvw{bottom:12px;--cvw-size:52px}.cvw[data-side=right]{right:12px}.cvw[data-side=left]{left:12px}" +
+    ".cvw-panel{width:calc(100vw - 24px);max-width:none;height:calc(100vh - 88px);max-height:calc(100dvh - 88px)}}" +
+    "@media (prefers-reduced-motion:reduce){.cvw-btn,.cvw-panel,.cvw-dot,.cvw-btn::before{animation:none!important;transition:none!important}}";
 
   var style = document.createElement("style");
   style.textContent = css;
@@ -62,7 +74,7 @@
   root.className = "cvw";
   root.setAttribute("data-side", side);
   root.setAttribute("data-state", "idle");
-  if (fixedColor) root.style.setProperty("--cvw-accent", fixedColor);
+  if (fixedColor && HEX.test(fixedColor)) root.style.setProperty("--cvw-accent", fixedColor);
 
   var panel = document.createElement("div");
   panel.className = "cvw-panel";
@@ -71,13 +83,11 @@
   var button = document.createElement("button");
   button.type = "button";
   button.className = "cvw-btn";
-  button.setAttribute("aria-label", "Open voice assistant");
-  button.setAttribute("aria-expanded", "false");
   button.innerHTML =
-    '<svg class="cvw-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg>' +
-    '<svg class="cvw-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
-    '<span class="cvw-txt"></span>';
+    '<svg class="cvw-phone" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+    '<path d="M3.62 6.5c1.4-1.9 3.5-3.4 6.4-4.1a1 1 0 0 1 1.1.5l1.6 3a1 1 0 0 1-.3 1.3l-2 1.4c-.3.2-.4.6-.2.9 1 1.7 2.4 3.1 4.1 4.1.3.2.7.1.9-.2l1.4-2a1 1 0 0 1 1.3-.3l3 1.6a1 1 0 0 1 .5 1.1c-.7 2.9-2.2 5-4.1 6.4a1 1 0 0 1-1.2 0C11.4 17.6 5.9 12.1 3.4 7.7a1 1 0 0 1 .2-1.2Z"/></svg>' +
+    '<svg class="cvw-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
+    '<span class="cvw-dot"></span><span class="cvw-txt"></span>';
   var text = button.querySelector(".cvw-txt");
 
   root.appendChild(panel);
@@ -87,40 +97,35 @@
   var open = false;
   var state = "idle";
 
-  // Idle shows the optional label; a live call shows that it is live, even
-  // with the panel closed -- otherwise a visitor who collapsed it mid-call has
-  // no sign the microphone is still on. "Waiting…" likewise: the widget keeps
-  // polling for a free agent while collapsed and will connect on its own.
+  // Idle shows the label, if there is one; a live call shows that it is live
+  // even with the panel closed -- otherwise a visitor who collapsed it mid-call
+  // has no sign the microphone is still on. "Waiting…" likewise: the widget
+  // keeps polling for a free agent while collapsed and connects on its own.
   function render() {
+    var txt =
+      state === "in_call" ? "In call" :
+      state === "waiting" ? "Waiting…" :
+      state === "connecting" ? "Connecting…" :
+      label;
+    text.textContent = open ? "" : txt;
+    button.classList.toggle("cvw-has-text", !open && txt !== "");
     root.setAttribute("data-state", state);
-    text.textContent =
-      state === "in_call"
-        ? "In call"
-        : state === "waiting"
-          ? "Waiting…"
-          : state === "connecting"
-            ? "Connecting…"
-            : open
-              ? ""
-              : label;
     button.setAttribute("aria-expanded", open ? "true" : "false");
-    button.setAttribute("aria-label", open ? "Close voice assistant" : "Open voice assistant");
+    button.setAttribute("aria-label", open ? "Close voice assistant" : txt || "Call us");
     if (open) root.setAttribute("data-open", "");
     else root.removeAttribute("data-open");
   }
 
-  // The iframe -- and with it the WebRTC client -- loads on the first click,
-  // not on page view, and stays mounted once closed so a call in progress
-  // isn't cut off by collapsing the panel.
+  // The iframe (and the WebRTC client) loads on first click, not page view, and
+  // stays mounted once closed so collapsing the panel doesn't cut off a call.
   function show() {
     if (!frame) {
       frame = document.createElement("iframe");
       frame.src = origin + "/widget/" + key;
       frame.title = "Voice assistant";
       frame.allow = "microphone; autoplay";
-      // The widget page reads its parent's origin from the referrer (where
-      // ancestorOrigins isn't available) to prove which site it is on. Set
-      // here so a host page's stricter referrer policy can't strip it.
+      // The widget page proves which site it is on via the referrer where
+      // ancestorOrigins is missing; set here so a host policy can't strip it.
       frame.referrerPolicy = "strict-origin-when-cross-origin";
       panel.appendChild(frame);
     }
@@ -152,17 +157,39 @@
     else if (data.event === "state" && typeof data.state === "string") {
       state = data.state;
       render();
-    } else if (data.event === "theme" && !fixedColor && /^#[0-9a-fA-F]{6}$/.test(data.accent || "")) {
+    } else if (data.event === "theme" && !fixedColor && HEX.test(data.accent || "")) {
       root.style.setProperty("--cvw-accent", data.accent);
     }
   });
 
+  var mounted = false;
   function mount() {
-    document.body.appendChild(root);
+    if (mounted) return;
+    mounted = true;
     render();
+    if (document.body) document.body.appendChild(root);
+    else document.addEventListener("DOMContentLoaded", function () { document.body.appendChild(root); });
   }
-  if (document.body) mount();
-  else document.addEventListener("DOMContentLoaded", mount);
+
+  // The agent's colour and label, so the first paint is right rather than the
+  // default. Mount waits for the answer, but briefly and never on failure: a
+  // slow or refused config request must not cost the page its launcher. A
+  // widget that is switched off has nothing to launch, so no button.
+  var settled = false;
+  function applyConfig(config) {
+    if (settled) return;
+    settled = true;
+    if (config && config.enabled === false) return;
+    if (config) {
+      if (!fixedColor && HEX.test(config.accent_color || "")) root.style.setProperty("--cvw-accent", config.accent_color);
+      if (!fixedLabel && typeof config.button_label === "string") label = config.button_label;
+    }
+    mount();
+  }
+  fetch(origin + "/api/widget/config?key=" + encodeURIComponent(key), { mode: "cors" })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(applyConfig, function () { applyConfig(null); });
+  setTimeout(function () { applyConfig(null); }, 1500);
 
   window.CodeoraWidget = { open: show, close: hide, toggle: function () { (open ? hide : show)(); } };
 })();
