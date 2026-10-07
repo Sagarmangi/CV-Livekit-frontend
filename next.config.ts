@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  /**
+   * `next build` emits .next/standalone: server.js plus only the traced
+   * node_modules it needs, so the server runs it without an `npm install`.
+   * public/ and .next/static are deliberately left out of that folder by
+   * Next and copied in by the deploy workflow (see .github/workflows/deploy.yml
+   * and DEPLOY.md) -- server.js serves them itself once they're there.
+   */
+  output: "standalone",
   async headers() {
     return [
       {

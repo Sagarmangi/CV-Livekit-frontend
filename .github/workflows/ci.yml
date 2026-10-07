@@ -1,0 +1,50 @@
+# Lint, type-check and build on every push and pull request.
+#
+# The build runs against placeholder values for every required variable:
+# nothing in this app reads a secret at build time (no NEXT_PUBLIC_ vars, every
+# page is force-dynamic), so CI never needs a real credential. If a future
+# change makes the build want one, this is the job that should start failing.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_URL: http://x
+  SUPABASE_SERVICE_ROLE_KEY: x
+  SUPABASE_ANON_KEY: x
+  LIVEKIT_URL: ws://x
+  LIVEKIT_API_KEY: x
+  LIVEKIT_API_SECRET: x
+  TWILIO_ACCOUNT_SID: x
+  TWILIO_AUTH_TOKEN: x
+  TWILIO_SIP_TRUNK_SID: x
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  check:
+    name: Lint, types, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      # Route types (PageProps, RouteContext) are generated, not checked in;
+      # tsc needs them to exist before it runs.
+      - run: npx next typegen
+
+      - run: npx tsc --noEmit
+
+      - run: npx next build

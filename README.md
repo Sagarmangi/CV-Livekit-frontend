@@ -46,6 +46,15 @@ The in-browser agent test dispatches the `codeora-inbound-agent` worker and
 listens on the `codeora.diagnostic` text-stream topic. Both names must match
 the backend.
 
+## Deployment
+
+Every push runs CI (`.github/workflows/ci.yml`: lint, type check, build with
+placeholder env). A push to `main` that passes CI builds a standalone bundle
+and deploys it over SSH with an atomic symlink switch, a health check and
+automatic rollback (`.github/workflows/deploy.yml` and
+`scripts/deploy-dashboard.sh`). Server setup, the systemd unit and the
+required GitHub secrets are in [DEPLOY.md](DEPLOY.md).
+
 ## Web widget
 
 Each agent can be embedded on a customer's site as a floating voice widget:

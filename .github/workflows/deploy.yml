@@ -1,0 +1,123 @@
+# Zero-downtime deploy of the dashboard, built here and switched on the server.
+#
+# Runs after the CI workflow has passed on main. Builds the standalone bundle,
+# rsyncs it to a release directory named after the commit, then runs
+# scripts/deploy-dashboard.sh on the server, which repoints the `current`
+# symlink, restarts the systemd unit, health-checks it and rolls back if the
+# new release doesn't come up. See DEPLOY.md for the server side.
+#
+# Secrets: DEPLOY_HOST, DEPLOY_USER, SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS. Nothing
+# else -- the app's own environment lives on the server in
+# /opt/codeora/dashboard/.env.local and is never part of a release.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+# One deploy at a time, in order. Never cancel a running one: a half-synced
+# release directory is harmless, but a restart interrupted mid-health-check is
+# not.
+concurrency:
+  group: deploy-dashboard
+  cancel-in-progress: false
+
+env:
+  SUPABASE_URL: http://x
+  SUPABASE_SERVICE_ROLE_KEY: x
+  SUPABASE_ANON_KEY: x
+  LIVEKIT_URL: ws://x
+  LIVEKIT_API_KEY: x
+  LIVEKIT_API_SECRET: x
+  TWILIO_ACCOUNT_SID: x
+  TWILIO_AUTH_TOKEN: x
+  TWILIO_SIP_TRUNK_SID: x
+  NEXT_TELEMETRY_DISABLED: "1"
+  RELEASES_DIR: /opt/codeora/dashboard-releases
+
+jobs:
+  deploy:
+    name: Build and deploy
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The exact commit CI passed on, not whatever main points at now.
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx next build
+
+      # Next leaves public/ and .next/static out of the standalone folder on
+      # purpose (they're CDN candidates); server.js serves them itself once
+      # they sit next to it, which is the layout assembled here.
+      - name: Assemble release
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          test -f .next/standalone/server.js
+          rm -rf release
+          mkdir -p release/.next
+          cp -a .next/standalone/. release/
+          cp -a .next/static release/.next/static
+          cp -a public release/public
+          cp scripts/deploy-dashboard.sh release/deploy-dashboard.sh
+          chmod +x release/deploy-dashboard.sh
+          echo "$SHA" > release/RELEASE
+          test -f release/public/widget.js
+          test -f release/server.js
+          du -sh release
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload release
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "mkdir -p '$RELEASES_DIR/$SHA'"
+          # World-readable files and traversable directories, so the service
+          # user can run a release uploaded by the deploy user.
+          rsync -az --delete --chmod=D755,F644 \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            release/ "$DEPLOY_USER@$DEPLOY_HOST:$RELEASES_DIR/$SHA/"
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "chmod +x '$RELEASES_DIR/$SHA/deploy-dashboard.sh'"
+
+      - name: Switch release on the server
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "bash '$RELEASES_DIR/$SHA/deploy-dashboard.sh' '$SHA'"
